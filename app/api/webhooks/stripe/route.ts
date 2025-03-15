@@ -124,7 +124,6 @@ export async function POST(req: NextRequest) {
         console.log("🔍 New subscription tier:", newSubscriptionTier);
         console.log("🔍 New credits value:", newCredits);
 
-        // Update subscription tier, customerId, and set credits explicitly
         const updatedUser = await User.findOneAndUpdate(
           { clerkId: metadata.userId },
           {
@@ -146,6 +145,82 @@ export async function POST(req: NextRequest) {
 
         console.log(
           `✅ User upgraded to ${newSubscriptionTier} with credits set to ${newCredits}`
+        );
+        break;
+      }
+
+      case "invoice.payment_succeeded": {
+        console.log("🔥 Processing invoice.payment_succeeded");
+
+        const invoice = event.data.object as Stripe.Invoice;
+        console.log("🔍 Invoice ID:", invoice.id);
+
+        // Ensure this is a subscription renewal (not a one-time payment)
+        if (!invoice.subscription) {
+          console.log("ℹ️ Not a subscription invoice, skipping");
+          break;
+        }
+
+        // Retrieve the subscription to get the price ID
+        const subscription = await stripe.subscriptions.retrieve(
+          invoice.subscription as string
+        );
+        const priceId = subscription.items.data[0]?.price.id;
+        console.log("🔍 Subscription Price ID:", priceId);
+
+        if (!priceId) {
+          console.error("❌ Missing Price ID in subscription");
+          return NextResponse.json(
+            { error: "Missing Price ID" },
+            { status: 400 }
+          );
+        }
+
+        // Map price ID to tier and credits
+        let newSubscriptionTier: "free" | "basic" | "premium" = "free";
+        let newCredits = 10;
+        if (priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID) {
+          newSubscriptionTier = "basic";
+          newCredits = 2500; // Reset to 2,500 credits for basic
+        } else if (
+          priceId === process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID
+        ) {
+          newSubscriptionTier = "premium";
+          newCredits = 5000; // Reset to 5,000 credits for premium
+        } else {
+          console.error("❌ Unknown Price ID:", priceId);
+          return NextResponse.json(
+            { error: "Unknown Price ID" },
+            { status: 400 }
+          );
+        }
+        console.log("🔍 Renewal subscription tier:", newSubscriptionTier);
+        console.log("🔍 Renewal credits value:", newCredits);
+
+        // Find the user by customerId (since clerkId isn’t in invoice metadata)
+        const updatedUser = await User.findOneAndUpdate(
+          { customerId: invoice.customer },
+          {
+            subscriptionTier: newSubscriptionTier,
+            credits: newCredits, // Reset credits to the exact value
+          },
+          { new: true }
+        );
+        console.log(
+          "🔍 Updated user on renewal:",
+          JSON.stringify(updatedUser, null, 2)
+        );
+
+        if (!updatedUser) {
+          console.error("❌ User not found for customerId:", invoice.customer);
+          return NextResponse.json(
+            { error: "User not found" },
+            { status: 400 }
+          );
+        }
+
+        console.log(
+          `✅ User renewed ${newSubscriptionTier} with credits reset to ${newCredits}`
         );
         break;
       }

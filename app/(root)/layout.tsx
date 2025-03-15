@@ -56,7 +56,7 @@ export default function RootLayout({
                 </aside>
 
                 {/* Main Content Area with left margin on md+ screens */}
-                <main className="flex-1 w-full md:ml-56 overflow-auto p-1">
+                <main className="flex-1 w-full md:ml-50 overflow-auto p-1">
                   {children}
                 </main>
               </div>

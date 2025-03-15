@@ -8,7 +8,8 @@ type SubscriptionTier = "free" | "basic" | "premium";
 type UserContextType = {
   isAuthenticated: boolean;
   tier: SubscriptionTier;
-  credits: number; 
+  credits: number;
+  createdAt: string | null;
 };
 
 const UserContext = createContext<UserContextType | null>(null);
@@ -17,6 +18,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoaded } = useUser();
   const [tier, setTier] = useState<SubscriptionTier>("free");
   const [credits, setCredits] = useState<number>(10); // Default to 10 until fetched
+  const [createdAt, setCreatedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (isLoaded && user) {
@@ -24,7 +26,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         .then((data) => {
           if (data) {
             setTier(data.subscriptionTier || "free");
-            setCredits(data.credits ?? 10); 
+            setCredits(data.credits ?? 10);
+            setCreatedAt(data.createdAt); // Assumes your DB record includes createdAt as a string
           }
         })
         .catch((error) => {
@@ -38,7 +41,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       value={{
         isAuthenticated: !!user,
         tier,
-        credits, // Expose credits to the app
+        credits,
+        createdAt,
       }}
     >
       {children}
