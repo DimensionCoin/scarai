@@ -13,7 +13,7 @@ const UserSchema = new Schema(
       default: "free",
     },
     customerId: { type: String, default: "" },
-    credits: { type: Number, required: true, default: 20 }, // Ensure default value
+    credits: { type: Number, required: true, default: 20 }, 
   },
   { timestamps: true }
 );

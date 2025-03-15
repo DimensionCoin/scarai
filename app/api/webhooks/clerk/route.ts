@@ -57,7 +57,7 @@ export async function POST(req: Request) {
         createdAt: new Date(created_at),
         subscriptionTier: "free",
         customerId: "",
-        credits: 20,
+        credits: 20, // Explicitly set to 20
       };
 
       console.log("User data before saving:", user);
