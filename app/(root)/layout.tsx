@@ -1,3 +1,4 @@
+import type React from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -6,6 +7,7 @@ import "../globals.css";
 import Sidebar from "@/components/shared/Sidebar";
 import Header from "@/components/shared/Header";
 import { UserProvider } from "@/providers/UserProvider";
+import ClientLayoutWrapper from "@/components/shared/ClientLayoutWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -44,23 +46,25 @@ export default function RootLayout({
 
             <Toaster position="top-right" reverseOrder={false} />
 
-            <div className="flex flex-col min-h-screen relative z-0">
-              {/* Header always at the top */}
-              <Header />
+            <ClientLayoutWrapper>
+              <div className="flex flex-col min-h-screen relative z-0">
+                {/* Header always at the top */}
+                <Header />
 
-              {/* Main area */}
-              <div className="flex flex-1 w-full">
-                {/* Sidebar visible on md and larger screens */}
-                <aside className="hidden md:block">
-                  <Sidebar />
-                </aside>
+                {/* Main area */}
+                <div className="flex flex-1 w-full">
+                  {/* Sidebar visible on md and larger screens */}
+                  <aside className="hidden md:block">
+                    <Sidebar />
+                  </aside>
 
-                {/* Main Content Area with left margin on md+ screens */}
-                <main className="flex-1 w-full md:ml-50 overflow-auto p-1">
-                  {children}
-                </main>
+                  {/* Main Content Area with left margin on md+ screens */}
+                  <main className="flex-1 w-full md:ml-50 overflow-auto p-1">
+                    {children}
+                  </main>
+                </div>
               </div>
-            </div>
+            </ClientLayoutWrapper>
           </body>
         </html>
       </UserProvider>

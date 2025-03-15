@@ -31,11 +31,13 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { CreditsProgressBar } from "./CreditsProgressBar";
-
+import { useUserContext } from "@/providers/UserProvider";
+import LoadingScreen from "./LoadingScreen";
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
 const Header = () => {
   const { user, isLoaded } = useUser();
+  const { tier, isContextLoaded } = useUserContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
@@ -65,7 +67,6 @@ const Header = () => {
       href: "/wallet",
       icon: TargetIcon,
     },
-    
   ];
 
   const fetchUserData = useCallback(async (userId: string) => {
@@ -87,15 +88,9 @@ const Header = () => {
     setMobileMenuOpen(false);
   }, [pathname]);
 
-  if (!isLoaded) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
-        <div className="flex flex-col items-center gap-2">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-700 border-t-teal-500"></div>
-          <p className="text-zinc-300">Loading...</p>
-        </div>
-      </div>
-    );
+  // Show loading screen if either user or context data is not loaded
+  if (!isLoaded || !isContextLoaded) {
+    return <LoadingScreen />;
   }
 
   return (
@@ -139,17 +134,19 @@ const Header = () => {
             <SignedIn>
               {user && (
                 <div className="flex gap-3 md:gap-6 items-center">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative group hover:bg-black"
-                  >
-                    <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-teal-400/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity blur-sm"></div>
-                    <div className="relative">
-                      <Bell className="h-5 w-5 text-zinc-300 hover:text-black" />
-                      <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-teal-400 shadow-[0_0_5px_rgba(45,212,191,0.7)]" />
-                    </div>
-                  </Button>
+                  {tier === "premium" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="relative group hover:bg-black"
+                    >
+                      <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-teal-400/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity blur-sm"></div>
+                      <div className="relative">
+                        <Bell className="h-5 w-5 text-zinc-300 hover:text-black" />
+                        <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-teal-400 shadow-[0_0_5px_rgba(45,212,191,0.7)]" />
+                      </div>
+                    </Button>
+                  )}
 
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

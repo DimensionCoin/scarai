@@ -29,8 +29,8 @@ export const CreditsProgressBar = () => {
   // Determine color based on percentage remaining
   const getColorClass = () => {
     if (percentRemaining > 60) return "from-emerald-500 to-teal-500";
-    if (percentRemaining > 30) return "from-amber-500 to-yellow-500";
-    return "from-red-500 to-rose-500";
+    if (percentRemaining > 30) return "from-teal-500 to-amber-500";
+    return "from-teal-500 to-rose-500";
   };
 
   // Format tier name with first letter capitalized

@@ -25,6 +25,26 @@ const AccountPage = () => {
     );
   }
 
+  // Calculate max credits based on tier
+  const getMaxCredits = () => {
+    switch (tier) {
+      case "free":
+        return 20;
+      case "basic":
+        return 2500;
+      case "premium":
+        return 5000;
+      default:
+        return 100;
+    }
+  };
+
+  // Calculate progress percentage
+  const calculateProgressPercentage = () => {
+    const maxCredits = getMaxCredits();
+    return Math.min((credits / maxCredits) * 100, 100);
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -197,7 +217,7 @@ const AccountPage = () => {
                     </h3>
                     <div className="flex items-center justify-between mt-1">
                       <p className="text-zinc-200 font-medium">
-                        {credits || 0} credits available
+                        {credits || 0} / {getMaxCredits()} credits available
                       </p>
                       {tier !== "premium" && (
                         <Link href="/account/subscribe">
@@ -212,12 +232,9 @@ const AccountPage = () => {
                     </div>
                     <div className="w-full bg-zinc-700/30 rounded-full h-2 mt-2">
                       <div
-                        className="h-2 rounded-full bg-zinc-600/50"
+                        className="h-2 rounded-full bg-teal-400/80"
                         style={{
-                          width: `${Math.min(
-                            ((credits || 0) / 100) * 100,
-                            100
-                          )}%`,
+                          width: `${calculateProgressPercentage()}%`,
                         }}
                       ></div>
                     </div>

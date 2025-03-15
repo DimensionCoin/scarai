@@ -10,6 +10,7 @@ type UserContextType = {
   tier: SubscriptionTier;
   credits: number;
   createdAt: string | null;
+  isContextLoaded: boolean; // New property to track if context data is loaded
 };
 
 const UserContext = createContext<UserContextType | null>(null);
@@ -19,21 +20,37 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [tier, setTier] = useState<SubscriptionTier>("free");
   const [credits, setCredits] = useState<number>(10); // Default to 10 until fetched
   const [createdAt, setCreatedAt] = useState<string | null>(null);
+  const [isContextLoaded, setIsContextLoaded] = useState<boolean>(false);
 
   useEffect(() => {
-    if (isLoaded && user) {
-      getUser(user.id)
-        .then((data) => {
-          if (data) {
-            setTier(data.subscriptionTier || "free");
-            setCredits(data.credits ?? 10);
-            setCreatedAt(data.createdAt); // Assumes your DB record includes createdAt as a string
-          }
-        })
-        .catch((error) => {
-          console.error("Failed to fetch user data:", error);
-        });
+    // If Clerk hasn't loaded yet, we're not ready
+    if (!isLoaded) {
+      setIsContextLoaded(false);
+      return;
     }
+
+    // If no user is logged in, we're still "loaded" (just with default values)
+    if (!user) {
+      setIsContextLoaded(true);
+      return;
+    }
+
+    // Fetch user data from your backend
+    getUser(user.id)
+      .then((data) => {
+        if (data) {
+          setTier(data.subscriptionTier || "free");
+          setCredits(data.credits ?? 10);
+          setCreatedAt(data.createdAt);
+        }
+        // Mark context as loaded regardless of whether we got data
+        setIsContextLoaded(true);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch user data:", error);
+        // Even on error, we should mark as loaded to prevent infinite loading states
+        setIsContextLoaded(true);
+      });
   }, [isLoaded, user]);
 
   return (
@@ -43,6 +60,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         tier,
         credits,
         createdAt,
+        isContextLoaded, // Include the new flag in the context value
       }}
     >
       {children}
