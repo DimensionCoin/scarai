@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
         }
 
         let newSubscriptionTier: "free" | "basic" | "premium" = "free";
-        let newCredits = 10; // Default for free tier
+        let newCredits = 20; // Default for free tier
         if (priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID) {
           newSubscriptionTier = "basic";
           newCredits = 2500; // Basic tier gets 2,500 credits
@@ -178,7 +178,7 @@ export async function POST(req: NextRequest) {
 
         // Map price ID to tier and credits
         let newSubscriptionTier: "free" | "basic" | "premium" = "free";
-        let newCredits = 10;
+        let newCredits = 20;
         if (priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID) {
           newSubscriptionTier = "basic";
           newCredits = 2500; // Reset to 2,500 credits for basic

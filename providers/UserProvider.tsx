@@ -18,7 +18,7 @@ const UserContext = createContext<UserContextType | null>(null);
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoaded } = useUser();
   const [tier, setTier] = useState<SubscriptionTier>("free");
-  const [credits, setCredits] = useState<number>(10); // Default to 10 until fetched
+  const [credits, setCredits] = useState<number>(20); // Default to 10 until fetched
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [isContextLoaded, setIsContextLoaded] = useState<boolean>(false);
 
