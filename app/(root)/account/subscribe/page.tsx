@@ -16,12 +16,15 @@ import { useRouter } from "next/navigation";
 import { subscribe } from "@/actions/stripe.actions";
 import { motion } from "framer-motion";
 import { useUserContext } from "@/providers/UserProvider";
+import { toast } from "sonner";
 
 export default function SubscribePage() {
   const { user, isSignedIn } = useUser();
   const { tier: currentTier } = useUserContext();
   const router = useRouter();
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsLoaded(true);
@@ -29,7 +32,6 @@ export default function SubscribePage() {
 
   // Subscription Plans
   const tiers = [
-    
     {
       id: 0,
       name: "basic",
@@ -64,23 +66,64 @@ export default function SubscribePage() {
   ];
 
   const handleSubscribe = async (tier: "basic" | "premium") => {
-    if (!isSignedIn) return alert("Please sign in to subscribe");
+    if (!isSignedIn) {
+      toast.error("Authentication Required", {
+        description: "Please sign in to subscribe to a plan.",
+      });
+      return;
+    }
 
-    const priceId =
-      tier === "basic"
-        ? process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID
-        : process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID;
+    // Reset any previous errors
+    setError(null);
 
-    const url = await subscribe({
-      userId: user?.id || "",
-      email: user?.emailAddresses[0]?.emailAddress || "",
-      priceId: priceId!,
-    });
+    // Set loading state for the specific tier
+    setIsLoading(tier);
 
-    if (url) {
-      router.push(url);
-    } else {
-      alert("Failed to subscribe");
+    try {
+      // Get the appropriate price ID based on the tier
+      const priceId =
+        tier === "basic"
+          ? process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID
+          : process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID;
+
+      console.log(`Subscribing to ${tier} tier with price ID: ${priceId}`);
+
+      if (!priceId) {
+        console.error(`Price ID for ${tier} tier is not defined`);
+        setError(`Configuration error: Price ID for ${tier} tier is missing`);
+        toast.error("Configuration Error", {
+          description: `Price ID for ${tier} tier is missing. Please contact support.`,
+        });
+        return;
+      }
+
+      const url = await subscribe({
+        userId: user?.id || "",
+        email: user?.emailAddresses[0]?.emailAddress || "",
+        priceId: priceId,
+      });
+
+      if (url) {
+        console.log(`Redirecting to: ${url}`);
+        router.push(url);
+      } else {
+        console.error("Failed to get checkout URL");
+        setError("Failed to start checkout process");
+        toast.error("Checkout Error", {
+          description:
+            "Failed to start checkout process. Please try again later.",
+        });
+      }
+    } catch (error: any) {
+      console.error("Subscription error:", error);
+      const errorMessage =
+        error.message || "An error occurred during the subscription process";
+      setError(errorMessage);
+      toast.error("Subscription Error", {
+        description: errorMessage,
+      });
+    } finally {
+      setIsLoading(null);
     }
   };
 
@@ -90,10 +133,8 @@ export default function SubscribePage() {
 
   return (
     <div className="min-h-screen w-full">
-      
-
       {/* Back button */}
-      <div className="relative z-10 ">
+      <div className="relative z-10 p-4">
         <Button
           variant="ghost"
           className="text-zinc-400 hover:text-white hover:bg-zinc-800/50"
@@ -122,6 +163,17 @@ export default function SubscribePage() {
               needs.
             </p>
           </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-lg text-sm text-center">
+              {error}
+              <div className="mt-2 text-xs">
+                Please check your environment variables and Stripe
+                configuration.
+              </div>
+            </div>
+          )}
 
           {/* Pricing Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
@@ -164,7 +216,7 @@ export default function SubscribePage() {
                         {tier.price}
                       </span>
                       <span className="text-xs sm:text-sm text-zinc-400">
-                        /year
+                        /month
                       </span>
                     </div>
                     <div className="mt-1 text-xs text-teal-400 font-medium">
@@ -194,24 +246,21 @@ export default function SubscribePage() {
                       <div className="w-full py-2 text-center border border-zinc-700/50 rounded-lg text-zinc-400 text-sm">
                         Current Plan
                       </div>
-                    ) : tier.name === "free" ? (
-                      <div className="w-full py-2 text-center border border-zinc-700/50 rounded-lg text-zinc-400 text-sm">
-                        Free Tier
-                      </div>
                     ) : (
                       <Button
                         onClick={() =>
-                          handleSubscribe(
-                            tier.name === "basic" ? "basic" : "premium"
-                          )
+                          handleSubscribe(tier.name as "basic" | "premium")
                         }
+                        disabled={isLoading !== null}
                         className="w-full relative group overflow-hidden"
                       >
                         <div
                           className={`absolute inset-0 bg-gradient-to-r ${tier.color} opacity-90`}
                         ></div>
                         <span className="relative text-white font-medium">
-                          Subscribe
+                          {isLoading === tier.name
+                            ? "Processing..."
+                            : "Subscribe"}
                         </span>
                       </Button>
                     )}
