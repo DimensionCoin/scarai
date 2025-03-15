@@ -22,6 +22,7 @@ export const config = {
 export async function POST(req: NextRequest) {
   try {
     await connect();
+    console.log("✅ Connected to database");
 
     const rawBody = Buffer.from(await req.arrayBuffer());
     const sig = req.headers.get("stripe-signature");
@@ -37,6 +38,7 @@ export async function POST(req: NextRequest) {
     let event: Stripe.Event;
     try {
       event = stripe.webhooks.constructEvent(rawBody, sig, endpointSecret);
+      console.log(`✅ Received Event: ${event.type}`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
       console.error("❌ Stripe Webhook Signature Error:", errorMessage);
@@ -46,19 +48,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(`✅ Received Event: ${event.type}`);
-
     switch (event.type) {
       case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
         console.log("🔥 Processing checkout.session.completed");
 
+        const session = event.data.object as Stripe.Checkout.Session;
         const fullSession = await stripe.checkout.sessions.retrieve(
           session.id,
           {
             expand: ["line_items.data.price", "customer"],
           }
         );
+        console.log("🔍 Full session retrieved:", fullSession.id);
 
         let customerId: string | null = null;
         if (typeof fullSession.customer === "string") {
@@ -66,7 +67,6 @@ export async function POST(req: NextRequest) {
         } else if (fullSession.customer && "id" in fullSession.customer) {
           customerId = fullSession.customer.id;
         }
-
         console.log("🔍 Customer ID:", customerId);
         if (!customerId) {
           console.error("❌ Missing customer ID:", fullSession.customer);
@@ -119,7 +119,6 @@ export async function POST(req: NextRequest) {
             { status: 400 }
           );
         }
-
         console.log("🔍 New subscription tier:", newSubscriptionTier);
 
         const updatedUser = await User.findOneAndUpdate(
@@ -130,8 +129,8 @@ export async function POST(req: NextRequest) {
           },
           { new: true }
         );
+        console.log("🔍 Updated user:", JSON.stringify(updatedUser, null, 2));
 
-        console.log("🔍 Updated user:", updatedUser);
         if (!updatedUser) {
           console.error("❌ User not found for clerkId:", metadata.userId);
           return NextResponse.json(
@@ -152,7 +151,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
-    console.error("❌ Webhook Processing Error:", errorMessage);
+    console.error("❌ Webhook Processing Error:", errorMessage, error);
     return NextResponse.json(
       { error: `Internal Server Error: ${errorMessage}` },
       { status: 500 }
