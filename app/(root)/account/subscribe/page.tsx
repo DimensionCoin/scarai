@@ -114,10 +114,12 @@ export default function SubscribePage() {
             "Failed to start checkout process. Please try again later.",
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Subscription error:", error);
       const errorMessage =
-        error.message || "An error occurred during the subscription process";
+        error instanceof Error
+          ? error.message
+          : "An error occurred during the subscription process";
       setError(errorMessage);
       toast.error("Subscription Error", {
         description: errorMessage,
