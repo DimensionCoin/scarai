@@ -5,18 +5,17 @@ import User from "@/models/user.model";
 
 // Initialize Stripe with the correct API version
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-02-24.acacia", // Updated to match expected version
+  apiVersion: "2025-02-24.acacia",
 });
-// ✅ Stripe Webhook Secret
+// Stripe Webhook Secret
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
-// ✅ Disable Next.js automatic request body parsing
 export const config = {
   api: {
-    bodyParser: false, // ✅ Required for raw body verification
+    bodyParser: false,
   },
-  runtime: "edge", // ✅ Ensures correct handling on Vercel
-  streaming: false, // ✅ Prevents body modification
+  runtime: "edge",
+  streaming: false,
 };
 
 export async function POST(req: NextRequest) {
@@ -106,12 +105,15 @@ export async function POST(req: NextRequest) {
         }
 
         let newSubscriptionTier: "free" | "basic" | "premium" = "free";
+        let creditsToAdd = 0;
         if (priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID) {
           newSubscriptionTier = "basic";
+          creditsToAdd = 2500; // Basic tier gets 2,500 credits
         } else if (
           priceId === process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID
         ) {
           newSubscriptionTier = "premium";
+          creditsToAdd = 5000; // Premium tier gets 5,000 credits
         } else {
           console.error("❌ Unknown Price ID:", priceId);
           return NextResponse.json(
@@ -120,12 +122,15 @@ export async function POST(req: NextRequest) {
           );
         }
         console.log("🔍 New subscription tier:", newSubscriptionTier);
+        console.log("🔍 Credits to add:", creditsToAdd);
 
+        // Update subscription tier, customerId, and credits in one operation
         const updatedUser = await User.findOneAndUpdate(
           { clerkId: metadata.userId },
           {
             subscriptionTier: newSubscriptionTier,
             customerId,
+            $inc: { credits: creditsToAdd }, // Increment credits by the specified amount
           },
           { new: true }
         );
@@ -139,7 +144,9 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        console.log(`✅ User upgraded to ${newSubscriptionTier}`);
+        console.log(
+          `✅ User upgraded to ${newSubscriptionTier} with ${creditsToAdd} credits added`
+        );
         break;
       }
 

@@ -12,7 +12,7 @@ export async function createUser(user: any) {
 
     const userData = {
       ...user,
-      credits: user.credits ?? 10, // Ensure credits is always set
+      credits: user.credits ?? 20, // Ensure credits is always set
     };
 
     console.log("📢 Creating user with data:", userData); // Log user data
