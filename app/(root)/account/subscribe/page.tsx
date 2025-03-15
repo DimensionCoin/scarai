@@ -34,7 +34,7 @@ export default function SubscribePage() {
       id: 0,
       name: "basic",
       description: "For growing businesses",
-      price: "$150",
+      price: "$25 CAD",
       credits: "2,500 credits monthly",
       features: [
         "Full API access",
@@ -50,7 +50,7 @@ export default function SubscribePage() {
       id: 1,
       name: "premium",
       description: "For large enterprises",
-      price: "$250",
+      price: "$50 CAD",
       credits: "5,000 credits monthly",
       features: [
         "Unlimited API access",
@@ -90,21 +90,16 @@ export default function SubscribePage() {
 
   return (
     <div className="min-h-screen w-full">
-      {/* Background elements */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-teal-500/5 via-transparent to-indigo-500/5"></div>
-        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-400/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl"></div>
-      </div>
+      
 
       {/* Back button */}
-      <div className="relative z-10 p-6">
+      <div className="relative z-10 ">
         <Button
           variant="ghost"
           className="text-zinc-400 hover:text-white hover:bg-zinc-800/50"
           onClick={() => router.back()}
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-4 w-4 mr-1" />
           Back
         </Button>
       </div>

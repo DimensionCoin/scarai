@@ -19,13 +19,11 @@ export const config = {
   streaming: false, // ✅ Prevents body modification
 };
 
-// ✅ Handle Stripe Webhook Events
 export async function POST(req: NextRequest) {
   try {
     await connect();
 
-    // ✅ Get raw body as a Buffer
-    const rawBody = Buffer.from(await req.arrayBuffer()); // 🔹 Convert `ArrayBuffer` to `Buffer`
+    const rawBody = Buffer.from(await req.arrayBuffer());
     const sig = req.headers.get("stripe-signature");
 
     if (!sig) {
@@ -50,12 +48,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`✅ Received Event: ${event.type}`);
 
-    // ✅ Handle Stripe Events
     switch (event.type) {
-      case "invoice.payment_succeeded":
-        console.log("✅ Payment succeeded:", event.data.object);
-        break;
-
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         console.log("🔥 Processing checkout.session.completed");
@@ -74,6 +67,7 @@ export async function POST(req: NextRequest) {
           customerId = fullSession.customer.id;
         }
 
+        console.log("🔍 Customer ID:", customerId);
         if (!customerId) {
           console.error("❌ Missing customer ID:", fullSession.customer);
           return NextResponse.json(
@@ -83,8 +77,7 @@ export async function POST(req: NextRequest) {
         }
 
         const metadata = session.metadata as { userId: string } | null;
-        const priceId = fullSession.line_items?.data?.[0]?.price?.id;
-
+        console.log("🔍 Session metadata:", metadata);
         if (!metadata || !metadata.userId) {
           console.error("❌ Missing metadata.userId:", metadata);
           return NextResponse.json(
@@ -92,6 +85,17 @@ export async function POST(req: NextRequest) {
             { status: 400 }
           );
         }
+
+        const priceId = fullSession.line_items?.data?.[0]?.price?.id;
+        console.log("🔍 Price ID from session:", priceId);
+        console.log(
+          "🔍 Expected BASIC Price ID:",
+          process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID
+        );
+        console.log(
+          "🔍 Expected PREMIUM Price ID:",
+          process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID
+        );
 
         if (!priceId) {
           console.error("❌ Missing Price ID");
@@ -116,6 +120,8 @@ export async function POST(req: NextRequest) {
           );
         }
 
+        console.log("🔍 New subscription tier:", newSubscriptionTier);
+
         const updatedUser = await User.findOneAndUpdate(
           { clerkId: metadata.userId },
           {
@@ -125,6 +131,7 @@ export async function POST(req: NextRequest) {
           { new: true }
         );
 
+        console.log("🔍 Updated user:", updatedUser);
         if (!updatedUser) {
           console.error("❌ User not found for clerkId:", metadata.userId);
           return NextResponse.json(
@@ -136,13 +143,6 @@ export async function POST(req: NextRequest) {
         console.log(`✅ User upgraded to ${newSubscriptionTier}`);
         break;
       }
-
-      case "customer.subscription.created":
-        console.log("✅ Subscription created:", event.data.object);
-        break;
-      case "customer.subscription.deleted":
-        console.log("✅ Subscription deleted:", event.data.object);
-        break;
 
       default:
         console.log(`ℹ️ Unhandled event type: ${event.type}`);
