@@ -9,7 +9,7 @@ const UserSchema = new Schema(
     createdAt: { type: Date, required: true, default: Date.now },
     subscriptionTier: {
       type: String,
-      enum: ["free", "basic"],
+      enum: ["free", "basic", "premium"],
       default: "free",
     },
     customerId: { type: String, default: "" },
