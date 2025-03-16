@@ -19,7 +19,7 @@ export default function SearchCoin() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null); // Add ref for dropdown
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -81,17 +81,8 @@ export default function SearchCoin() {
     inputRef.current?.focus();
   };
 
-  const slugify = (name: string) =>
-    name
-      .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9-]/g, "");
-
-  const handleResultClick = (cryptoName: string) => {
-    console.log(
-      "Clicked result, navigating to:",
-      `/coin/${slugify(cryptoName)}`
-    );
+  const handleResultClick = (cryptoId: string) => {
+    console.log("Clicked result, navigating to:", `/coin/${cryptoId}`);
   };
 
   return (
@@ -139,9 +130,9 @@ export default function SearchCoin() {
               {results.map((crypto) => (
                 <Link
                   key={crypto.id}
-                  href={`/coin/${slugify(crypto.name)}`}
+                  href={`/coin/${crypto.id}`} // Use crypto.id instead of slugify(crypto.name)
                   className="flex items-center gap-3 p-3 hover:bg-white/5 cursor-pointer transition-colors border-b border-white/5 last:border-b-0"
-                  onClick={() => handleResultClick(crypto.name)} // Debug navigation
+                  onClick={() => handleResultClick(crypto.id)} // Update to use crypto.id
                 >
                   <div className="h-6 w-6 rounded-full bg-zinc-800/50 flex items-center justify-center overflow-hidden">
                     <Image

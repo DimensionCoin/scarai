@@ -66,7 +66,7 @@ const AccountPage = () => {
   };
 
   return (
-    <div className="min-h-screen py-6 px-4 sm:px-2 relative overflow-hidden">
+    <div className="min-h-screen py-3 px-4 sm:px-2 relative overflow-hidden">
       <motion.div
         className="max-w-4xl mx-auto relative z-10"
         initial="hidden"
@@ -115,7 +115,7 @@ const AccountPage = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/80 to-transparent"></div>
             </div>
 
-            <div className="relative -mt-20 px-6 pb-8">
+            <div className="relative -mt-35 px-6 pb-8">
               <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4">
                 {/* Avatar with glow effect */}
                 <div className="relative">

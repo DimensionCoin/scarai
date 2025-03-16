@@ -40,7 +40,7 @@ const SuccessPage = () => {
     const timeoutId = setTimeout(() => {
       // Replace '/order-confirmation' with the actual path to your confirmation page.
       // You might want to include the session ID or order ID in the URL.
-      router.push("/account");
+      router.push("/dashboard");
     }, 3000); // Redirect after 3 seconds
 
     return () => clearTimeout(timeoutId); // Clear the timeout if the component unmounts.

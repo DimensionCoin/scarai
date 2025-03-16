@@ -286,7 +286,7 @@ export default function ChatPage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="fixed bottom-[64px] left-0 right-0 px-2 z-10"
+            className="fixed bottom-[64px] left-0 right-0 px-2 z-10 md:ml-50"
           >
             <div className="bg-black/20 backdrop-blur-md rounded-lg border border-teal-500/20 p-2 mb-1 flex items-start gap-2">
               <div className="flex-shrink-0 h-5 w-5 rounded-full bg-teal-500/20 flex items-center justify-center mt-0.5">
@@ -316,7 +316,7 @@ export default function ChatPage() {
       {/* Input area - fixed to bottom */}
       <div
         id="chat-input-area"
-        className="fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t border-white/10 pt-2 pb-3 px-2 z-10"
+        className="fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t border-white/10 pt-2 pb-3 py-2 px-2 z-10 md:ml-50"
       >
         <div className="relative">
           <Input

@@ -10,7 +10,7 @@ const CancelPage = () => {
   useEffect(() => {
     // Redirect to home page after 5 seconds
     const timer = setTimeout(() => {
-      router.push("/");
+      router.push("/dashboard");
     }, 5000);
 
     return () => clearTimeout(timer); // Clear timeout if component unmounts
@@ -30,7 +30,7 @@ const CancelPage = () => {
         </p>
         <p className="text-sm text-gray-500">
           If you are not redirected, click{" "}
-          <Link href="/" className="text-blue-500">
+          <Link href="/dashboard" className="text-blue-500">
             here
           </Link>
           .

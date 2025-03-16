@@ -13,10 +13,10 @@ import {
   ChevronDown,
   LayoutDashboard,
   Search,
-  MessageCircle,
   Newspaper,
   TargetIcon,
 } from "lucide-react";
+import { GiCrystalBall } from "react-icons/gi";
 import { Button } from "../ui/button";
 import { useEffect, useCallback } from "react";
 import { getUser } from "@/actions/user.actions";
@@ -50,7 +50,7 @@ const Header = () => {
     {
       name: "Oracle",
       href: "/oracle",
-      icon: MessageCircle,
+      icon: GiCrystalBall,
     },
     {
       name: "Explore",

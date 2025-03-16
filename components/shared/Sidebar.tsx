@@ -5,11 +5,12 @@ import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Search,
-  MessageCircle,
   Newspaper,
   TargetIcon,
   ChevronRight,
 } from "lucide-react";
+import { GiCrystalBall } from "react-icons/gi";
+
 import { CreditsProgressBar } from "./CreditsProgressBar";
 
 const Sidebar = () => {
@@ -23,8 +24,8 @@ const Sidebar = () => {
     },
     {
       name: "Oracle",
-      href: "/ask",
-      icon: MessageCircle,
+      href: "/oracle",
+      icon: GiCrystalBall,
     },
     {
       name: "Explore",
