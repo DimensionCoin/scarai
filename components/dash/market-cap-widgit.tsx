@@ -58,12 +58,9 @@ export default function MarketCapWidget() {
 
   return (
     <div className="rounded-lg border border-zinc-700/30 bg-zinc-800/20 shadow-sm mb-4">
-      <div className="flex items-center p-3 border-b border-zinc-700/30">
-        <h3 className="text-sm font-medium text-white">Total Market Cap</h3>
-      </div>
+      
       <div className="h-[300px] w-full relative">
-        {" "}
-        {/* Increased height */}
+      
         <div ref={containerRef} className="absolute inset-0">
           {!scriptLoadedRef.current && (
             <div className="flex items-center justify-center h-full">

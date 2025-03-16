@@ -98,7 +98,10 @@ export default function TopCoins() {
           <h3 className="text-sm font-medium text-white">TOP COINS</h3>
         </div>
         <div className="text-xs text-zinc-400">
-          {lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : "N/A"}
+          <div>
+            {lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : "N/A"}
+          </div>
+          <div className="text-xs">Last Updated</div>
         </div>
       </div>
 
