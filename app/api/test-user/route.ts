@@ -1,11 +1,12 @@
-// /pages/api/test-user.ts
+// app/api/test-user/route.ts
 "use server";
 
 import User from "@/models/user.model";
 import { connect } from "@/db";
 import { NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST() {
+  // Removed 'req: Request'
   try {
     await connect();
     const userData = {
