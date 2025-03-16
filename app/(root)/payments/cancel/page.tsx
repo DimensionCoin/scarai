@@ -1,30 +1,43 @@
 "use client";
-import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { XCircle } from "lucide-react";
 
-const FailedPayment = () => {
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+
+const CancelPage = () => {
   const router = useRouter();
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      router.push("/dashboard");
-    }, 3000);
-    return () => clearTimeout(timeout);
+    // Redirect to home page after 5 seconds
+    const timer = setTimeout(() => {
+      router.push("/");
+    }, 5000);
+
+    return () => clearTimeout(timer); // Clear timeout if component unmounts
   }, [router]);
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-zinc-950/80 backdrop-blur-xl">
-      <div className="bg-zinc-900 border border-red-600 rounded-xl shadow-xl p-8 text-center w-full max-w-md">
-        <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-        <h1 className="text-2xl font-bold text-red-400 mb-4">Payment Failed</h1>
-        <p className="text-zinc-400 mb-2">
-          Something went wrong with your transaction.
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
+      <div className="bg-white p-8 rounded shadow-md text-center">
+        <h1 className="text-2xl font-semibold text-red-500 mb-4">
+          Payment Cancelled
+        </h1>
+        <p className="text-gray-700 mb-4">
+          We couldn&apos;t process your payment.
         </p>
-        <p className="text-zinc-500">Redirecting you back to the dashboard...</p>
+        <p className="text-gray-700 mb-4">
+          You&apos;ll be redirected to the home page in 5 seconds...
+        </p>
+        <p className="text-sm text-gray-500">
+          If you are not redirected, click{" "}
+          <Link href="/" className="text-blue-500">
+            here
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );
 };
 
-export default FailedPayment;
+export default CancelPage;

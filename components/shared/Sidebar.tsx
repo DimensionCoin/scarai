@@ -22,15 +22,16 @@ const Sidebar = () => {
       icon: LayoutDashboard,
     },
     {
-      name: "Search",
-      href: "/search",
-      icon: Search,
-    },
-    {
       name: "Oracle",
       href: "/ask",
       icon: MessageCircle,
     },
+    {
+      name: "Explore",
+      href: "/explore",
+      icon: Search,
+    },
+
     {
       name: "News",
       href: "/news",
@@ -41,7 +42,6 @@ const Sidebar = () => {
       href: "/wallet",
       icon: TargetIcon,
     },
-    
   ];
 
   return (
@@ -58,8 +58,6 @@ const Sidebar = () => {
 
       {/* Content */}
       <div className="relative z-10 flex flex-col h-[calc(100vh-60px)]">
-        
-
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-8 px-4">
           <ul className="space-y-3">

@@ -1,49 +1,68 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
+
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { useSearchParams } from "next/navigation";
 
-const Confetti = dynamic(() => import("react-confetti"), { ssr: false });
-
-const SuccessPayment = () => {
-  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
+const SuccessPage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    // You can access query parameters like this:
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const sessionId = searchParams.get("session_id"); // Will be used for verification
 
-      const handleResize = () => {
-        setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-      };
-      window.addEventListener("resize", handleResize);
-      return () => window.removeEventListener("resize", handleResize);
-    }
-  }, []);
+    // Optionally, you can verify the session ID with your server here.
+    // This is a crucial step to ensure the payment was successful and valid.
+    // Example:
+    // const verifySession = async () => {
+    //   const response = await fetch('/api/verify-session', {
+    //     method: 'POST',
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //     },
+    //     body: JSON.stringify({ sessionId }),
+    //   });
+    //
+    //   if (response.ok) {
+    //     // Session is valid, update your database, etc.
+    //   } else {
+    //     // Session is invalid, handle the error.
+    //     console.error('Session verification failed');
+    //   }
+    // };
+    //
+    // verifySession();
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      router.push("/dashboard");
-    }, 4000);
-    return () => clearTimeout(timeout);
-  }, [router]);
+    // Redirect to a confirmation page or order details page after a delay.
+    const timeoutId = setTimeout(() => {
+      // Replace '/order-confirmation' with the actual path to your confirmation page.
+      // You might want to include the session ID or order ID in the URL.
+      router.push("/account");
+    }, 3000); // Redirect after 3 seconds
+
+    return () => clearTimeout(timeoutId); // Clear the timeout if the component unmounts.
+  }, [router, searchParams]);
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-zinc-950/80 backdrop-blur-xl">
-      <div className="bg-zinc-900 border border-zinc-800/50 rounded-xl shadow-xl p-8 text-center w-full max-w-md">
-        {windowSize.width > 0 && (
-          <Confetti width={windowSize.width} height={windowSize.height} />
-        )}
-        <h1 className="text-2xl font-bold text-zinc-100 mb-4">
-          Payment Successful
+    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
+      <div className="bg-white p-8 rounded shadow-md">
+        <h1 className="text-2xl font-semibold text-green-600 mb-4">
+          Payment Successful!
         </h1>
-        <p className="text-zinc-400 mb-2">
-          Your transaction was completed successfully.
+        <p className="text-gray-700 mb-4">
+          Thank you for your purchase. We&apos;ve sent a receipt to your email
+          address.
         </p>
-        <p className="text-zinc-500">We are updating your account...</p>
+        <p className="text-gray-700 mb-4">
+          You&apos;ll be redirected to your account page shortly.
+        </p>
+        <Button onClick={() => router.push("/account")}>Go to Account</Button>
       </div>
     </div>
   );
 };
 
-export default SuccessPayment;
+export default SuccessPage;

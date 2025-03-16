@@ -48,15 +48,16 @@ const Header = () => {
       icon: LayoutDashboard,
     },
     {
-      name: "Search",
-      href: "/search",
-      icon: Search,
-    },
-    {
       name: "Oracle",
-      href: "/ask",
+      href: "/oracle",
       icon: MessageCircle,
     },
+    {
+      name: "Explore",
+      href: "/explore",
+      icon: Search,
+    },
+
     {
       name: "News",
       href: "/news",

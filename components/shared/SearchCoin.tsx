@@ -19,8 +19,8 @@ export default function SearchCoin() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null); // Add ref for dropdown
 
-  // Fetch results when searchQuery changes
   useEffect(() => {
     if (!searchQuery.trim()) {
       setResults([]);
@@ -35,7 +35,7 @@ export default function SearchCoin() {
         );
         if (response.ok) {
           const data = await response.json();
-          setResults(data.slice(0, 10)); // show top 10 results
+          setResults(data.slice(0, 10));
         }
       } catch (error) {
         console.error("Error fetching search results:", error);
@@ -44,7 +44,6 @@ export default function SearchCoin() {
       }
     };
 
-    // Debounce the search to avoid too many requests
     const timer = setTimeout(() => {
       fetchResults();
     }, 300);
@@ -52,12 +51,13 @@ export default function SearchCoin() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Hide dropdown when clicking outside the input
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         inputRef.current &&
-        !inputRef.current.contains(event.target as Node)
+        !inputRef.current.contains(event.target as Node) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
       ) {
         setShowDropdown(false);
       }
@@ -81,8 +81,21 @@ export default function SearchCoin() {
     inputRef.current?.focus();
   };
 
+  const slugify = (name: string) =>
+    name
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+
+  const handleResultClick = (cryptoName: string) => {
+    console.log(
+      "Clicked result, navigating to:",
+      `/coin/${slugify(cryptoName)}`
+    );
+  };
+
   return (
-    <div className="relative w-full max-w-md mx-auto">
+    <div className="relative w-full max-w-full mb-2">
       {/* Search input with glass effect */}
       <div className="relative">
         <div className="absolute inset-0 -z-10 bg-black/20 backdrop-blur-xl rounded-lg"></div>
@@ -112,7 +125,10 @@ export default function SearchCoin() {
 
       {/* Results dropdown with glass effect */}
       {showDropdown && (searchQuery.trim() !== "" || results.length > 0) && (
-        <div className="absolute z-10 w-full mt-1 overflow-hidden rounded-lg border border-white/15 bg-black/30 backdrop-blur-xl shadow-lg">
+        <div
+          ref={dropdownRef}
+          className="absolute z-10 w-full mt-1 overflow-hidden rounded-lg border border-white/15 bg-black/30 backdrop-blur-xl shadow-lg"
+        >
           {isLoading ? (
             <div className="p-4 text-center">
               <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-teal-400"></div>
@@ -123,12 +139,9 @@ export default function SearchCoin() {
               {results.map((crypto) => (
                 <Link
                   key={crypto.id}
-                  href={`/coin/${crypto.id}`}
+                  href={`/coin/${slugify(crypto.name)}`}
                   className="flex items-center gap-3 p-3 hover:bg-white/5 cursor-pointer transition-colors border-b border-white/5 last:border-b-0"
-                  onClick={() => {
-                    setShowDropdown(false);
-                    setSearchQuery("");
-                  }}
+                  onClick={() => handleResultClick(crypto.name)} // Debug navigation
                 >
                   <div className="h-6 w-6 rounded-full bg-zinc-800/50 flex items-center justify-center overflow-hidden">
                     <Image
