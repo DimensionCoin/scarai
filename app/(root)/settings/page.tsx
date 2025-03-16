@@ -40,6 +40,7 @@ import type { EmailAddressResource } from "@clerk/types";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 export default function Settings() {
   const { user, isLoaded } = useUser();
@@ -326,7 +327,6 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen  text-white py-6 px-2 sm:px-2">
-      
       <motion.div
         className="max-w-5xl mx-auto relative z-10"
         initial="hidden"
@@ -349,7 +349,6 @@ export default function Settings() {
               Account Settings
             </h1>
           </div>
-          
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -368,7 +367,7 @@ export default function Settings() {
                     <div className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-teal-400 to-indigo-500 opacity-75 blur"></div>
                     <div className="relative h-24 w-24 rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden border-2 border-zinc-700">
                       {user?.imageUrl ? (
-                        <img
+                        <Image
                           src={user.imageUrl || "/placeholder.svg"}
                           alt={user.firstName || "User"}
                           className="h-full w-full object-cover"
@@ -735,10 +734,12 @@ export default function Settings() {
             <div className="flex flex-col items-center justify-center gap-4">
               <div className="relative h-32 w-32 rounded-full bg-zinc-800/50 border-2 border-dashed border-zinc-700/50 flex items-center justify-center overflow-hidden">
                 {user?.imageUrl ? (
-                  <img
+                  <Image
                     src={user.imageUrl || "/placeholder.svg"}
                     alt={user.firstName || "User"}
                     className="h-full w-full object-cover"
+                    height={40}
+                    width={40}
                   />
                 ) : (
                   <Upload className="h-8 w-8 text-zinc-500" />

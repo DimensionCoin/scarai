@@ -268,7 +268,7 @@ const Header = () => {
 
             {/* Menu Panel */}
             <motion.div
-              className="absolute top-[58px] left-0 bottom-0 w-64 bg-zinc-950/80 backdrop-blur-xl border-r border-white/5 shadow-[0_0_15px_rgba(0,0,0,0.5)] overflow-auto"
+              className="absolute top-[58px] left-0 bottom-0 w-52 bg-zinc-950/80 backdrop-blur-xl border-r border-white/5 shadow-[0_0_15px_rgba(0,0,0,0.5)] overflow-auto"
               initial={{ x: -320 }}
               animate={{ x: 0 }}
               exit={{ x: -320 }}
@@ -282,7 +282,7 @@ const Header = () => {
               </div>
 
               {/* Navigation */}
-              <nav className="relative z-10 py-8 px-4">
+              <nav className="relative z-10 py-8 px-4 mb-36">
                 <ul className="space-y-3">
                   {navItems.map((item) => {
                     const isActive = pathname === item.href;

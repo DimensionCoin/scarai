@@ -18,7 +18,7 @@ const UserContext = createContext<UserContextType | null>(null);
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoaded } = useUser();
   const [tier, setTier] = useState<SubscriptionTier>("free");
-  const [credits, setCredits] = useState<number>(20); // Default to 10 until fetched
+  const [credits, setCredits] = useState<number>(20); 
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [isContextLoaded, setIsContextLoaded] = useState<boolean>(false);
 
@@ -40,7 +40,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       .then((data) => {
         if (data) {
           setTier(data.subscriptionTier || "free");
-          setCredits(data.credits ?? 10);
+          setCredits(data.credits ?? 20);
           setCreatedAt(data.createdAt);
         }
         // Mark context as loaded regardless of whether we got data
