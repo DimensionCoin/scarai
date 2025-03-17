@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import Article from "@/models/article.model"; // Fixed typo from article.model
-import {connect} from "@/db"; // Adjusted to match your likely setup
+import Article from "@/models/article.model";
+import { connect } from "@/db";
 
-// GET handler to fetch all articles or the latest one
 export async function GET(request: Request) {
   try {
     console.log("📡 Received request:", request.url);
@@ -10,10 +9,11 @@ export async function GET(request: Request) {
     // Connect to MongoDB
     await connect();
 
-    const { pathname } = new URL(request.url);
-    console.log("🔍 Pathname:", pathname);
+    const url = new URL(request.url);
+    // If the query parameter "latest" is set to "true", then fetch the latest article
+    const isLatest = url.searchParams.get("latest") === "true";
 
-    if (pathname === "/api/articles/latest") {
+    if (isLatest) {
       console.log("🔎 Fetching latest article...");
       const latestArticle = await Article.findOne().sort({ createdAt: -1 });
       if (!latestArticle) {
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       );
     }
 
-    // Default: Fetch all articles
+    // Otherwise, fetch all articles
     console.log("🔎 Fetching all articles...");
     const articles = await Article.find().sort({ createdAt: -1 });
     console.log("✅ Found articles:", articles.length);
