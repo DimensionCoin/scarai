@@ -1,4 +1,3 @@
-// app/api/(data)/exchange/route.ts
 import { NextResponse } from "next/server";
 import { connect } from "@/db";
 import ExchangeModel from "@/models/exchange.model";
@@ -14,10 +13,16 @@ interface Exchange {
   trade_volume_24h_btc: number;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await connect();
-    const exchangeDocs = await ExchangeModel.find()
+    const { searchParams } = new URL(request.url);
+    const searchQuery = searchParams.get("search");
+    let filter = {};
+    if (searchQuery) {
+      filter = { name: { $regex: searchQuery, $options: "i" } };
+    }
+    const exchangeDocs = await ExchangeModel.find(filter)
       .sort({ trust_score_rank: 1 })
       .lean();
 

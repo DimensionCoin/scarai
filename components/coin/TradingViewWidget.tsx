@@ -28,7 +28,7 @@ function TradingViewWidget({ symbol }: TradingViewWidgetProps) {
     script.type = "text/javascript";
     script.async = true;
     script.innerHTML = JSON.stringify({
-      symbol: `BINANCE:${uppercaseSymbol}USDT`, // Dynamic symbol with Binance
+      symbol: `COINBASE:${uppercaseSymbol}USD`, // Dynamic symbol with Binance
       width: "100%",
       height: "100%",
       locale: "en",

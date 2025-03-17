@@ -40,7 +40,7 @@ export default function ExchangeCard({ exchange }: ExchangeCardProps) {
       onClick={openModal}
       className="block group text-left focus:outline-none"
     >
-      <div className="relative h-30 overflow-hidden rounded-2xl transition-all duration-300 group-hover:scale-[1.03] group-hover:translate-y-[-5px] shadow-[0_10px_20px_rgba(0,0,0,0.15)] group-hover:shadow-[0_15px_30px_rgba(0,0,0,0.25)]">
+      <div className="relative h-30 w-45 md:w-65 overflow-hidden rounded-2xl transition-all duration-300 group-hover:scale-[1.03] group-hover:translate-y-[-5px] shadow-[0_10px_20px_rgba(0,0,0,0.15)] group-hover:shadow-[0_15px_30px_rgba(0,0,0,0.25)]">
         {/* Holographic effect */}
         <div className="absolute inset-0 bg-gradient-to-br from-black/30 via-black/20 to-black/30 backdrop-blur-xl rounded-2xl border border-white/10 group-hover:border-teal-500/30 transition-colors duration-300"></div>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(45,212,191,0.1)_0%,transparent_70%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
