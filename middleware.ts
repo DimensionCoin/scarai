@@ -21,6 +21,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/articles/latest",
   "/api/articles/[id]",
   "/api/test-user",
+  "/api/trading-prediction",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {

@@ -21,6 +21,7 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
 import TradingViewWidget from "@/components/coin/TradingViewWidget";
+import TradingSuggestion from "@/components/coin/TradingSuggestion";
 
 interface CoinData {
   id: string;
@@ -400,8 +401,6 @@ export default function CoinPage() {
   if (error) {
     return (
       <div className="min-h-screen text-white">
-        
-
         <div className="container mx-auto px-4 py-2 mb-14 relative z-10">
           <motion.div
             className="flex items-center mb-6"
@@ -489,6 +488,7 @@ export default function CoinPage() {
               <span>View Chart</span>
             </Link>
           </div>
+          <div></div>
         </motion.div>
 
         <motion.div
@@ -535,6 +535,10 @@ export default function CoinPage() {
         </motion.div>
         <div className="w-full h-[220px] relative overflow-hidden rounded-xl backdrop-blur-xl mb-4">
           <TradingViewWidget symbol={coin.symbol.toUpperCase()} />
+        </div>
+        <div className="mt-2 mb-4">
+          
+          <TradingSuggestion symbol={coin.id} />
         </div>
         <motion.div
           className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"
