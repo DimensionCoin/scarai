@@ -21,7 +21,7 @@ export default function OracleButton({ children }: OracleButtonProps) {
       setIsScrolling(true);
       timeoutRef.current = setTimeout(() => {
         setIsScrolling(false);
-      }, 3000);
+      }, 2000);
     };
 
     window.addEventListener("scroll", handleScroll);
@@ -41,32 +41,34 @@ export default function OracleButton({ children }: OracleButtonProps) {
       {pathname !== "/oracle" && (
         <Link href="/oracle">
           <div
-            className={`fixed bottom-4 right-4 z-50 flex items-center justify-center rounded-full shadow-lg cursor-pointer transition-all duration-200 ${
-              isScrolling || isHovering ? "scale-110" : "scale-80"
+            className={`fixed bottom-4 right-4 z-50 flex items-center justify-center rounded-full shadow-lg cursor-pointer transition-all duration-300 ${
+              isScrolling || isHovering ? "scale-105" : "scale-100"
             }`}
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
           >
+            {/* Glow effect */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-teal-500/40 to-indigo-500/40 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
             {/* Glass background */}
             <div
-              className={`relative flex items-center justify-center h-12 w-12 rounded-full border border-white/15 backdrop-blur-lg transition-all duration-200 ${
+              className={`relative flex items-center justify-center h-12 w-12 rounded-full border border-white/15 backdrop-blur-xl transition-all duration-300 ${
                 isScrolling || isHovering
-                  ? "bg-black/10 border-teal-500/10"
-                  : "bg-black/5 border-white/5"
+                  ? "bg-black/30 border-teal-500/30"
+                  : "bg-black/20 border-white/10"
               }`}
             >
-              {/* Icon with pulse effect */}
+              {/* Icon with subtle glow effect */}
               <div className="relative">
                 {(isScrolling || isHovering) && (
-                  <div className="absolute inset-0 rounded-full bg-teal-400/60 animate-ping"></div>
+                  <div className="absolute -inset-2 rounded-full bg-teal-400/10 blur-sm transition-opacity duration-300"></div>
                 )}
                 <GiCrystalBall
                   size={24}
                   className={`transition-colors duration-300 ${
                     isScrolling || isHovering
                       ? "text-teal-400"
-                      : "text-zinc-300/10"
+                      : "text-zinc-300"
                   }`}
                 />
               </div>

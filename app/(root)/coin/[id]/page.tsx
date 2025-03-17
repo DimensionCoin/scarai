@@ -20,6 +20,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
+import TradingViewWidget from "@/components/coin/TradingViewWidget";
 
 interface CoinData {
   id: string;
@@ -213,15 +214,6 @@ export default function CoinPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen text-white">
-        {/* Glassmorphism background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,rgba(45,212,191,0.05)_0%,transparent_70%)]"></div>
-          <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[100px]"></div>
-          <div className="absolute bottom-1/4 left-1/3 w-[600px] h-[600px] bg-teal-500/10 rounded-full blur-[100px]"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-zinc-800/20 rounded-full blur-[80px]"></div>
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(20,20,20,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(20,20,20,0.1)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
-        </div>
-
         <div className="container mx-auto px-4 py-8 mb-14 relative z-10">
           <motion.div
             className="flex items-center mb-6"
@@ -408,16 +400,9 @@ export default function CoinPage() {
   if (error) {
     return (
       <div className="min-h-screen text-white">
-        {/* Glassmorphism background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,rgba(239,68,68,0.05)_0%,transparent_70%)]"></div>
-          <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-rose-500/10 rounded-full blur-[100px]"></div>
-          <div className="absolute bottom-1/4 left-1/3 w-[600px] h-[600px] bg-orange-500/10 rounded-full blur-[100px]"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-zinc-800/20 rounded-full blur-[80px]"></div>
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(20,20,20,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(20,20,20,0.1)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
-        </div>
+        
 
-        <div className="container mx-auto px-4 py-8 mb-14 relative z-10">
+        <div className="container mx-auto px-4 py-2 mb-14 relative z-10">
           <motion.div
             className="flex items-center mb-6"
             initial={{ opacity: 0, x: -20 }}
@@ -476,17 +461,8 @@ export default function CoinPage() {
 
   return (
     <div className="min-h-screen text-white">
-      {/* Glassmorphism background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_center,rgba(45,212,191,0.05)_0%,transparent_70%)]"></div>
-        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[100px]"></div>
-        <div className="absolute bottom-1/4 left-1/3 w-[600px] h-[600px] bg-teal-500/10 rounded-full blur-[100px]"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-zinc-800/20 rounded-full blur-[80px]"></div>
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(20,20,20,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(20,20,20,0.1)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
-      </div>
-
       <motion.div
-        className="container mx-auto px-4 py-8 mb-14 relative z-10"
+        className="container mx-auto md:px-4 py-2 mb-14 relative z-10"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -557,7 +533,9 @@ export default function CoinPage() {
             </div>
           </div>
         </motion.div>
-
+        <div className="w-full h-[220px] relative overflow-hidden rounded-xl backdrop-blur-xl mb-4">
+          <TradingViewWidget symbol={coin.symbol.toUpperCase()} />
+        </div>
         <motion.div
           className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"
           variants={itemVariants}
