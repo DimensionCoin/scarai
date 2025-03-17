@@ -1,3 +1,4 @@
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
     remotePatterns: [
@@ -7,19 +8,21 @@ const nextConfig = {
       { protocol: "https", hostname: "**.mypinata.cloud" },
       { protocol: "https", hostname: "**.nftstorage.link" },
       { protocol: "https", hostname: "**.arweave.net" },
+      { protocol: "https", hostname: "coin-images.coingecko.com" },
+      { protocol: "https", hostname: "assets.coingecko.com" },
+      { protocol: "https", hostname: "img.clerk.com" },
+      { protocol: "https", hostname: "static.alchemyapi.io" },
+      { protocol: "https", hostname: "static.jup.ag" },
+      {
+        protocol: "https",
+        hostname:
+          "bafkreigfuq6m47yvyysphjuzziegrxaxeeyfm2bv25tsrxqddreenfss44.ipfs.nftstorage.link",
+      },
+      { protocol: "https", hostname: "i.imgur.com" },
+      // Add Twitter (X) profile image domain
+      { protocol: "https", hostname: "pbs.twimg.com" },
     ],
-    domains: [
-      "coin-images.coingecko.com",
-      "assets.coingecko.com",
-      "img.clerk.com",
-      "static.alchemyapi.io",
-      "static.jup.ag",
-      "ipfs.io",
-      "arweave.net",
-      "bafkreigfuq6m47yvyysphjuzziegrxaxeeyfm2bv25tsrxqddreenfss44.ipfs.nftstorage.link",
-      "i.imgur.com",
-    ],
-    unoptimized: true, // ✅ Allow large images without Next.js optimizations
+    unoptimized: true, // Allow large images without Next.js optimizations
   },
 };
 

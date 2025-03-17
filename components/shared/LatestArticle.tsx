@@ -168,7 +168,7 @@ export default function LatestArticle() {
 
   if (!article) {
     return (
-      <div className="relative overflow-hidden rounded-xl h-24 md:h-28">
+      <div className="relative overflow-hidden rounded-xl h-24 md:h-24 mb-4">
         <div className="absolute inset-0 border border-white/15 bg-black/10 backdrop-blur-xl rounded-xl"></div>
         <div className="relative z-10 h-full flex items-center justify-center">
           <div className="flex items-center gap-3">
@@ -191,7 +191,7 @@ export default function LatestArticle() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <motion.div
-          className="relative overflow-hidden rounded-xl cursor-pointer group"
+          className="relative overflow-hidden rounded-xl cursor-pointer group mb-4"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
