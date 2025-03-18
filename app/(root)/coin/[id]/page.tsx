@@ -13,15 +13,15 @@ import {
   LinkIcon,
   Code,
   FileText,
-  LineChart,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
 import TradingViewWidget from "@/components/coin/TradingViewWidget";
 import TradingSuggestion from "@/components/coin/TradingSuggestion";
+import ChartWidget from "@/components/coin/ChartWidget";
 
 interface Ticker {
   base: string;
@@ -498,13 +498,7 @@ export default function CoinPage() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
-            <Link
-              href={`/coin/${coin.symbol}/chart`}
-              className="flex items-center gap-2 px-3 py-1.5 bg-black/20 backdrop-blur-md hover:bg-black/30 border border-white/10 rounded-lg transition-colors text-sm text-zinc-300 hover:text-teal-400"
-            >
-              <LineChart className="h-4 w-4" />
-              <span>View Chart</span>
-            </Link>
+            <ChartWidget symbol={tradingViewSymbol}/>
           </div>
           <div></div>
         </motion.div>
