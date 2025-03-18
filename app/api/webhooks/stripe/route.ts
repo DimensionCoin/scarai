@@ -181,12 +181,12 @@ export async function POST(req: NextRequest) {
         let newCredits = 20;
         if (priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID) {
           newSubscriptionTier = "basic";
-          newCredits = 2500; // Reset to 2,500 credits for basic
+          newCredits = 1250; // Reset to 2,500 credits for basic
         } else if (
           priceId === process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID
         ) {
           newSubscriptionTier = "premium";
-          newCredits = 5000; // Reset to 5,000 credits for premium
+          newCredits = 2000; // Reset to 5,000 credits for premium
         } else {
           console.error("❌ Unknown Price ID:", priceId);
           return NextResponse.json(
