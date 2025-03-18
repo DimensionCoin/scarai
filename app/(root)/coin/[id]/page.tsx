@@ -80,7 +80,7 @@ export default function CoinPage() {
   const coinId = params.id;
 
   useEffect(() => {
-    let isMounted = true; // ✅ Prevents duplicate API calls
+    let isMounted = true; // Prevent duplicate API calls
 
     const fetchCoinData = async () => {
       if (!isLoaded || !user || !user.id || !coinId) {
@@ -89,13 +89,12 @@ export default function CoinPage() {
         return;
       }
 
-      if (hasFetched.current.has(coinId)) return; // ✅ Prevent duplicate fetches
+      if (hasFetched.current.has(coinId)) return; // Prevent duplicate fetches
 
       try {
         const response = await fetch(
           `/api/fetchcoin?coinId=${coinId}&userId=${user.id}`
         );
-
         const result = await response.json();
 
         if (!response.ok)
@@ -103,9 +102,9 @@ export default function CoinPage() {
 
         if (isMounted) {
           setCoin(result.coin);
-          hasFetched.current.add(coinId); // ✅ Mark this coin as fetched
+          hasFetched.current.add(coinId); // Mark this coin as fetched
         }
-      await refreshUser();
+        await refreshUser();
       } catch (error: unknown) {
         const errorMessage =
           error instanceof Error ? error.message : "An unknown error occurred";
@@ -119,9 +118,10 @@ export default function CoinPage() {
     fetchCoinData();
 
     return () => {
-      isMounted = false; // ✅ Cleanup to prevent multiple re-renders
+      isMounted = false; // Cleanup to prevent multiple re-renders
     };
-  }, [coinId, isLoaded, user]);
+  }, [coinId, isLoaded, user, refreshUser]);
+
 
   // Build TradingView symbol using selectedTicker if available
   const tradingViewSymbol = coin?.selectedTicker

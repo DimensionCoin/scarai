@@ -21,6 +21,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserButton } from "@clerk/nextjs";
+import { useUserContext } from "@/providers/UserProvider";
+import { useUser } from "@clerk/nextjs";
 
 // Example queries that will be randomly selected - shorter for mobile
 const exampleQueries = [
@@ -58,6 +60,8 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [inputHeight, setInputHeight] = useState(64); // Default height for input area
+  const { refreshUser } = useUserContext();
+  const { user } = useUser();
 
   // Select random example queries on initial load
   useEffect(() => {
@@ -97,7 +101,6 @@ export default function ChatPage() {
   const sendMessage = async () => {
     if (!input.trim()) return;
 
-    // Hide pro tip after first message
     setShowProTip(false);
 
     const userMessage = { role: "user", content: input, timestamp: new Date() };
@@ -109,28 +112,42 @@ export default function ChatPage() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input, chatHistory: messages }),
+        body: JSON.stringify({
+          userId: user?.id,
+          message: input,
+          chatHistory: messages,
+        }),
       });
 
       const data = await response.json();
-      if (data.response) {
+
+      if (response.ok && data.response) {
         setMessages([
           ...messages,
           userMessage,
           { role: "assistant", content: data.response, timestamp: new Date() },
         ]);
+        refreshUser();
       } else {
-        throw new Error("Invalid response");
+        throw new Error(data.error || "Invalid response from server");
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error sending message:", error);
+
+      // Type guard to safely handle the error
+      let errorMessage = "Something went wrong. Please try again.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === "string") {
+        errorMessage = error;
+      }
+
       setMessages([
         ...messages,
         userMessage,
         {
           role: "assistant",
-          content:
-            "I'm having trouble connecting to the market data. Please try again in a moment.",
+          content: errorMessage,
           timestamp: new Date(),
         },
       ]);
@@ -138,7 +155,6 @@ export default function ChatPage() {
       setLoading(false);
     }
   };
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
