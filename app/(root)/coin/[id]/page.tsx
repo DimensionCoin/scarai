@@ -74,24 +74,27 @@ export default function CoinPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
-  const hasFetched = useRef(new Set()); // ✅ Tracks fetched coin IDs
+  const hasFetched = useRef(false); // Tracks if fetch has occurred
+  const fetchLock = useRef(false); // Prevents concurrent fetches  const { refreshUser } = useUserContext();
   const { refreshUser } = useUserContext();
   const params = useParams() as { id: string };
   const coinId = params.id;
 
   useEffect(() => {
-    let isMounted = true; // Prevent duplicate API calls
+    if (
+      !isLoaded ||
+      !user?.id ||
+      !coinId ||
+      hasFetched.current ||
+      fetchLock.current
+    )
+      return;
 
     const fetchCoinData = async () => {
-      if (!isLoaded || !user || !user.id || !coinId) {
-        setError("User not authenticated or missing coin ID.");
-        setIsLoading(false);
-        return;
-      }
-
-      if (hasFetched.current.has(coinId)) return; // Prevent duplicate fetches
-
+      fetchLock.current = true; // Lock to prevent concurrent calls
+      setIsLoading(true);
       try {
+        console.log(`Fetching coin data for ${coinId}`);
         const response = await fetch(
           `/api/fetchcoin?coinId=${coinId}&userId=${user.id}`
         );
@@ -100,28 +103,24 @@ export default function CoinPage() {
         if (!response.ok)
           throw new Error(result.error || "Failed to fetch coin data");
 
-        if (isMounted) {
-          setCoin(result.coin);
-          hasFetched.current.add(coinId); // Mark this coin as fetched
-        }
-        await refreshUser();
+        setCoin(result.coin);
+        hasFetched.current = true; // Mark as fetched only on success
+        await refreshUser(); // Update user credits
       } catch (error: unknown) {
         const errorMessage =
           error instanceof Error ? error.message : "An unknown error occurred";
         console.error("Error fetching coin data:", errorMessage);
         setError(errorMessage);
       } finally {
-        if (isMounted) setIsLoading(false);
+        setIsLoading(false);
+        fetchLock.current = false; // Unlock after completion
       }
     };
 
     fetchCoinData();
 
-    return () => {
-      isMounted = false; // Cleanup to prevent multiple re-renders
-    };
-  }, [coinId, isLoaded, user, refreshUser]);
-
+    // Cleanup not needed since we’re not using timeouts or subscriptions
+  }, [coinId, isLoaded, user?.id]); // Stable dependencies
 
   // Build TradingView symbol using selectedTicker if available
   const tradingViewSymbol = coin?.selectedTicker

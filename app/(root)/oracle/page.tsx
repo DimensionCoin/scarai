@@ -16,7 +16,6 @@ import {
   DollarSignIcon,
   ChevronRight,
   LightbulbIcon,
-  AtSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -311,17 +310,17 @@ export default function ChatPage() {
               <div className="flex-1">
                 <p className="text-[10px] text-zinc-300 leading-tight">
                   <span className="text-teal-400 font-medium">Pro tip:</span>{" "}
-                  Use
+                  Use{" "}
                   <span className="inline-flex items-center bg-black/20 px-1 py-0.5 rounded text-teal-400">
                     <DollarSignIcon className="h-2 w-2" />
-                    TICKER
+                    coin-name
                   </span>{" "}
-                  for coin searches and{" "}
-                  <span className="inline-flex items-center bg-black/20 px-1 py-0.5 rounded text-teal-400">
-                    <AtSign className="h-2 w-2 mr-0.5" />
-                    username
-                  </span>{" "}
-                  to search for influencer posts.
+                  for coin data (e.g.,{" "}
+                  <span className="font-medium">$hedera-hashgraph</span>,{" "}
+                  <span className="font-medium">$the-open-network</span>,{" "}
+                  <span className="font-medium">$solana</span>). To search X
+                  posts, mention a username (e.g.,{" "}
+                  <span className="font-medium">@cz_binance</span>).
                 </p>
               </div>
             </div>

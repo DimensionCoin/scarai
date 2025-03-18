@@ -108,12 +108,12 @@ export async function POST(req: NextRequest) {
         let newCredits = 20; // Default for free tier
         if (priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID) {
           newSubscriptionTier = "basic";
-          newCredits = 2500; // Basic tier gets 2,500 credits
+          newCredits = 1250; // Basic tier gets 1250 credits
         } else if (
           priceId === process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID
         ) {
           newSubscriptionTier = "premium";
-          newCredits = 5000; // Premium tier gets 5,000 credits
+          newCredits = 2000; // Premium tier gets 2000 credits
         } else {
           console.error("❌ Unknown Price ID:", priceId);
           return NextResponse.json(

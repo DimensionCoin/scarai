@@ -176,7 +176,7 @@ export default function OracleButton({ children }: OracleButtonProps) {
               <div className="fixed inset-8 z-50 flex items-center justify-center">
                 <div className="relative w-full max-w-4xl h-[80vh] overflow-hidden rounded-2xl border border-white/15 shadow-2xl">
                   {/* Glass background with gradient */}
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/70 backdrop-blur-xl"></div>
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/10 backdrop-blur-xl"></div>
 
                   {/* Subtle animated gradient overlay */}
                   <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 to-indigo-500/5 opacity-50"></div>
@@ -274,7 +274,7 @@ export default function OracleButton({ children }: OracleButtonProps) {
                     </div>
 
                     {/* Input */}
-                    <div className="p-4 border-t border-white/10 bg-black/40">
+                    <div className="p-4 border-t border-white/10 bg-black/20">
                       <div className="flex items-center gap-3">
                         <input
                           ref={inputRef}

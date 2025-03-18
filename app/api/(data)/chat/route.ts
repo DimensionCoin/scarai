@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { connect } from "@/db";
-import Crypto from "@/models/crypto.model";
+import Crypto, { ICrypto } from "@/models/crypto.model";
 import Trending from "@/models/trending.model";
 import { hasEnoughCredits, deductCredits } from "@/actions/user.actions";
 
 // CoinGecko API URLs
-const COINGECKO_CURRENT_PRICE_URL = (coinId: string): string =>
-  `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinId}`;
+const COINGECKO_COIN_URL = (coinId: string): string =>
+  `https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=true&market_data=true&community_data=false&developer_data=false&sparkline=false`;
+
 const COINGECKO_HISTORICAL_URL = (coinId: string): string =>
   `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=90&interval=daily`;
+
+const COINGECKO_COIN_LIST_URL = "https://api.coingecko.com/api/v3/coins/list";
 
 // Influencers list
 const influencers: string[] = [
@@ -44,6 +47,7 @@ interface HistoricalData {
 interface CoinData {
   current: CurrentPriceData;
   historical: HistoricalData;
+  isTrending?: boolean;
 }
 
 interface CacheEntry {
@@ -52,16 +56,102 @@ interface CacheEntry {
 }
 
 const cache: { [key: string]: CacheEntry } = {};
-const CACHE_TTL = 24 * 60 * 60 * 1000;
+const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
 interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
+interface CoinGeckoCoin {
+  id: string;
+  symbol: string;
+  name: string;
+}
+
+// Load CoinGecko API key
+const COINGECKO_API_KEY = process.env.NEXT_PUBLIC_COINGECKO_API_KEY;
+if (!COINGECKO_API_KEY) {
+  console.warn("NEXT_PUBLIC_COINGECKO_API_KEY not found in .env. Using unauthenticated requests.");
+}
+
+async function fetchWithApiKey(url: string): Promise<Response> {
+  const headers: HeadersInit = { accept: "application/json" };
+  if (COINGECKO_API_KEY) {
+    headers["x-cg-demo-api-key"] = COINGECKO_API_KEY;
+    console.log(`Using CoinGecko API key: ${COINGECKO_API_KEY.slice(0, 6)}... for ${url}`);
+  }
+  return fetch(url, { headers });
+}
+
+async function fetchCoinIdByNameOrSymbol(input: string): Promise<string | null> {
+  console.log(`Fetching CoinGecko ID for input: ${input}`);
+  const response = await fetchWithApiKey(COINGECKO_COIN_LIST_URL);
+  if (!response.ok) {
+    console.error(`Failed to fetch CoinGecko coin list: ${response.status}`);
+    return null;
+  }
+  const coinList: CoinGeckoCoin[] = await response.json();
+  const coin =
+    coinList.find((c) => c.id.toLowerCase() === input.toLowerCase()) ||
+    coinList.find((c) => c.symbol.toUpperCase() === input.toUpperCase());
+  if (coin) {
+    console.log(`CoinGecko ID found: ${coin.id} for input: ${input}`);
+  } else {
+    console.log(`No CoinGecko ID found for input: ${input}`);
+  }
+  return coin ? coin.id : null;
+}
+
+async function fetchCurrentData(coinId: string): Promise<CurrentPriceData> {
+  console.log(`Fetching current data for ${coinId}`);
+  const response = await fetchWithApiKey(COINGECKO_COIN_URL(coinId));
+  if (!response.ok) {
+    console.error(`CoinGecko fetch failed for ${coinId}: ${response.status}`);
+    return { price: "N/A", change24h: "N/A" };
+  }
+  const data = await response.json();
+  if (!data || !data.market_data) {
+    console.error(`No market data for ${coinId}`);
+    return { price: "N/A", change24h: "N/A" };
+  }
+  const price = data.market_data.current_price.usd.toFixed(2);
+  const change24h = data.market_data.price_change_percentage_24h?.toFixed(2) || "N/A";
+  console.log(`Fetched current price: $${price}, 24h change: ${change24h}%`);
+  return { price, change24h };
+}
+
+async function fetchHistoricalData(coinId: string): Promise<HistoricalData> {
+  console.log(`Fetching historical data for ${coinId}`);
+  const response = await fetchWithApiKey(COINGECKO_HISTORICAL_URL(coinId));
+  if (!response.ok) {
+    console.error(`Failed to fetch historical data for ${coinId}: ${response.status}`);
+    return { prices: [], summary: "Failed to fetch historical data." };
+  }
+  const historicalData = await response.json();
+  const prices = historicalData.prices || [];
+  if (prices.length < 2) {
+    console.error(`Insufficient historical data for ${coinId}`);
+    return { prices, summary: "Insufficient historical data available." };
+  }
+  const oldestPrice = prices[0]?.[1] || 0;
+  const currentPrice = prices[prices.length - 1]?.[1] || 0;
+  const priceChange =
+    currentPrice && oldestPrice
+      ? (((currentPrice - oldestPrice) / oldestPrice) * 100).toFixed(2)
+      : "N/A";
+  console.log(`Historical prices length: ${prices.length}, 90-day change: ${priceChange}%`);
+  return {
+    prices,
+    summary: `Over the last 90 days, the price changed by ${priceChange}%.`,
+  };
+}
+
 export async function POST(req: Request) {
   try {
+    console.log("Starting POST request processing");
     const body = await req.json();
+    console.log("Request body:", body);
     const {
       userId,
       message,
@@ -69,14 +159,17 @@ export async function POST(req: Request) {
     }: { userId: string; message: string; chatHistory: ChatMessage[] } = body;
 
     if (!userId || !message) {
+      console.log("Missing userId or message");
       return NextResponse.json(
         { error: "User ID and message are required" },
         { status: 400 }
       );
     }
 
+    console.log(`Checking credits for user: ${userId}`);
     const hasCredits = await hasEnoughCredits(userId, 2);
     if (!hasCredits) {
+      console.log(`Not enough credits for user: ${userId}`);
       return NextResponse.json(
         { error: "Not enough credits" },
         { status: 403 }
@@ -85,144 +178,107 @@ export async function POST(req: Request) {
 
     const GROK_API_KEY = process.env.GROK_API_KEY;
     if (!GROK_API_KEY) {
+      console.log("Missing GROK_API_KEY");
       return NextResponse.json({ error: "Missing API key" }, { status: 500 });
     }
 
+    console.log("Connecting to database");
     await connect();
+    console.log("Fetching top coins from DB");
     const topCoins = await Crypto.find().sort({ market_cap: -1 }).limit(20);
+    console.log(`Top coins fetched: ${topCoins.length}`);
+    console.log("Fetching trending coins from DB");
     const trendingCoins = await Trending.find()
       .sort({ market_cap_rank: 1 })
       .limit(10);
+    console.log(`Trending coins fetched: ${trendingCoins.length}`);
 
-    const influencerMatches: string[] =
-      message.match(/@([A-Za-z0-9_]+)/g) || [];
-    const tickerMatches: string[] = message.match(/\$([A-Z]{2,6})\b/g) || [];
-    const isGlobalQuery = message.toLowerCase().includes("global market news");
+    const influencerMatches: string[] = message.match(/@([A-Za-z0-9_]+)/g) || [];
+    console.log(`Influencer matches: ${influencerMatches}`);
+    const tickerMatches: string[] = message.match(/\$([a-zA-Z0-9-]+)/g) || [];
+    console.log(`Ticker matches: ${tickerMatches}`);
+    const isGlobalQuery = /market.*(today|performing|news)/i.test(message);
+    console.log(`Is global query: ${isGlobalQuery}`);
 
-    // Fetch coin data
     const coinData: Record<string, CoinData> = {};
+
+    // Process coin tickers
     for (const ticker of tickerMatches) {
-      const symbol = ticker.replace("$", "").toUpperCase();
-      const coin =
-        (await Crypto.findOne({ symbol: symbol.toLowerCase() })) ||
-        (await Trending.findOne({ symbol: symbol.toLowerCase() }));
-      if (!coin) continue;
+      const coinInput = ticker.replace("$", "").toLowerCase();
+      console.log(`Processing ticker: ${ticker}, coinInput: ${coinInput}`);
 
-      const cacheKey = `price_${coin.id}`;
-      if (
-        cache[cacheKey] &&
-        Date.now() - cache[cacheKey].timestamp < CACHE_TTL
-      ) {
-        coinData[symbol] = cache[cacheKey].data;
-      } else {
-        const currentResponse = await fetch(
-          COINGECKO_CURRENT_PRICE_URL(coin.id)
-        );
-        if (!currentResponse.ok) continue;
-        const currentData = await currentResponse.json();
+      console.log(`Checking DB for coin: ${coinInput}`);
+      const coin: ICrypto | null = await Crypto.findOne({ id: coinInput });
+      console.log(`DB coin result: ${coin ? JSON.stringify(coin) : "null"}`);
 
-        const historicalResponse = await fetch(
-          COINGECKO_HISTORICAL_URL(coin.id)
-        );
-        if (!historicalResponse.ok) continue;
-        const historicalData = await historicalResponse.json();
+      const coinId = await fetchCoinIdByNameOrSymbol(coinInput) || coinInput;
+      const cacheKey = `price_${coinId}`;
+      const cached = cache[cacheKey];
+      const isStale = !cached || Date.now() - cached.timestamp > CACHE_TTL;
 
-        const prices = historicalData.prices || [];
-        const latestPrice = prices[prices.length - 1]?.[1] || 0;
-        const oldestPrice = prices[0]?.[1] || 0;
-        const priceChange =
-          latestPrice && oldestPrice
-            ? (((latestPrice - oldestPrice) / oldestPrice) * 100).toFixed(2)
-            : "N/A";
-
-        coinData[symbol] = {
-          current: {
-            price: currentData[0]?.current_price?.toFixed(2) || "N/A",
-            change24h:
-              currentData[0]?.price_change_percentage_24h?.toFixed(2) || "N/A",
-          },
-          historical: {
-            prices: historicalData.prices,
-            summary: `Over the last 90 days, the price changed by ${priceChange}%. Historical prices (last 10 of 90 days): ${prices
-              .slice(-10)
-              .map((p: number[]) => `$${p[1].toFixed(2)}`)
-              .join(", ")}.`,
-          },
+      let current: CurrentPriceData;
+      if (coin && !isStale) {
+        console.log(`Using DB data for ${coinInput}`);
+        current = {
+          price: coin.current_price?.toFixed(2) || "N/A",
+          change24h: coin.price_change_percentage_24h?.toFixed(2) || "N/A",
         };
-        cache[cacheKey] = { data: coinData[symbol], timestamp: Date.now() };
+      } else {
+        console.log(`Fetching current data from CoinGecko for: ${coinId}`);
+        current = await fetchCurrentData(coinId);
+      }
+
+      const historical = await fetchHistoricalData(coinId);
+      const isTrending = trendingCoins.some((t) => t.id.toLowerCase() === coinInput);
+
+      coinData[coinInput] = {
+        current,
+        historical,
+        isTrending: isTrending ? true : undefined,
+      };
+
+      if (isStale || !cached) {
+        cache[cacheKey] = {
+          data: coinData[coinInput],
+          timestamp: Date.now(),
+        };
       }
     }
+    console.log(`Coin data processed: ${JSON.stringify(coinData)}`);
 
-    // Updated System Prompt for Unified, Concise Summaries
     const systemPrompt = `
-You are Grok, a crypto market expert AI. Analyze all provided data (coin stats, X posts) and deliver a short, unified summary (4-6 sentences, 100-150 words) for queries about market news or coins. Blend insights into a single response without sections or raw data (e.g., no price lists, no individual tweets) unless explicitly requested:
+You are Grok, a crypto market expert AI with access to all data, including X posts. Deliver a short, unified summary (4-6 sentences, 100-150 words) for queries about coins or market news, blending insights without sections or raw data unless requested:
 
 **Instructions:**
-- For tickers (e.g., $SOL), distill current trend, 24h change, and 90-day performance into 1-2 sentences.
-- For usernames (e.g., @realDonaldTrump), search recent X posts (last 7 days) and weave crypto/market insights into the summary (1-2 sentences).
-- For "global market news," blend key trends from influencer X posts into the response (2-3 sentences).
-- Focus on high-level takeaways for quick, actionable info.
+- For tickers with $ (e.g., $render), use coinData (current price, 24h change, 90-day historical summary) to analyze performance. Always base responses on this data, never fake it.
+- If historical data fails, say "I couldn’t fetch 90-day data" and use current data only.
+- For "N/A" prices, say "No data available for [coin]."
+- Mention if a coin is trending only if coinData.isTrending is true, e.g., "$[coin] is trending today."
+- For any @username in the message, search their X posts from the last 4 weeks for insights related to the query (e.g., coin mentions, updates), and include relevant findings.
+- For market-wide queries (e.g., "market news"), search X posts from the last 7 days from ${influencers.join(", ")} for crypto market insights, blending them into the response.
 
 **Top 20 Coins:**
-${topCoins
-  .map(
-    (c) =>
-      `${c.name} (${c.symbol.toUpperCase()}): $${
-        c.current_price?.toFixed(2) || "N/A"
-      } (${c.price_change_percentage_24h?.toFixed(2) || "N/A"}% 24h)`
-  )
-  .join("\n")}
+${topCoins.map((c) => `${c.name} (${c.symbol.toUpperCase()}): $${c.current_price?.toFixed(2) || "N/A"} (${c.price_change_percentage_24h?.toFixed(2) || "N/A"}% 24h)`).join("\n")}
 
-**Trending Coins:**
-${trendingCoins
-  .map(
-    (c) =>
-      `${c.name} (${c.symbol.toUpperCase()}): $${
-        c.current_price?.toFixed(2) || "N/A"
-      }`
-  )
-  .join("\n")}
+**Trending Coins (for market queries only):**
+${trendingCoins.map((c) => `${c.name} (${c.symbol.toUpperCase()}): $${c.market_data.price?.toFixed(2) || "N/A"}`).join("\n")}
 
 **Specific Coin Data:**
-${
-  Object.entries(coinData)
-    .map(
-      ([symbol, data]) =>
-        `${symbol}: Current $${data.current.price} (${data.current.change24h}% 24h), ${data.historical.summary}`
-    )
-    .join("\n") || "No specific coin data available."
-}
+${Object.entries(coinData).map(([symbol, data]) => `${symbol}: Current $${data.current.price} (${data.current.change24h}% 24h), ${data.historical.summary}${data.isTrending ? " - Trending today!" : ""}`).join("\n") || "No specific coin data available."}
 
-**Influencer Insights:**
-${
-  influencerMatches.length > 0
-    ? `Search recent X posts (last 7 days) from ${influencerMatches.join(
-        ", "
-      )} for crypto/market insights.`
-    : "No specific influencer data requested."
-}
+**Influencer List for Market Queries:**
+${influencers.join(", ")}
 
-**Global Market News:**
-${
-  isGlobalQuery
-    ? `Blend X posts from ${influencers.join(
-        ", "
-      )} into a concise market summary.`
-    : "No global market news requested."
-}
-
-**Timestamp:** ${new Date().toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })}.
+**Timestamp:** ${new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}.
 `;
+    console.log("System prompt prepared");
 
+    console.log("Initializing OpenAI client");
     const client = new OpenAI({
       apiKey: GROK_API_KEY,
       baseURL: "https://api.x.ai/v1",
     });
+    console.log("Sending request to OpenAI");
     const completion = await client.chat.completions.create({
       model: "grok-2-latest",
       messages: [
@@ -230,29 +286,27 @@ ${
         ...chatHistory.slice(-5),
         { role: "user", content: message },
       ],
-      max_tokens: 400, // Enough for 100-150 word summaries
+      max_tokens: 400,
       temperature: 0.3,
     });
+    console.log("OpenAI response received");
 
     const responseText =
       completion.choices[0]?.message?.content || "⚠️ No response generated.";
+    console.log(`Response text: ${responseText}`);
+
+    console.log(`Deducting credits for user: ${userId}`);
     await deductCredits(userId, 2);
 
+    console.log("Returning response");
     return NextResponse.json({ response: responseText });
   } catch (error) {
     console.error("❌ Error generating response:", error);
-    if (
-      error instanceof Error &&
-      error.message.toLowerCase().includes("credits")
-    ) {
-      return NextResponse.json(
-        { error: "Not enough credits" },
-        { status: 403 }
-      );
+    if (error instanceof Error && error.message.toLowerCase().includes("credits")) {
+      console.log("Credit error detected");
+      return NextResponse.json({ error: "Not enough credits" }, { status: 403 });
     }
-    return NextResponse.json(
-      { error: "Chatbot failed to respond" },
-      { status: 500 }
-    );
+    console.log("General error");
+    return NextResponse.json({ error: "Chatbot failed to respond" }, { status: 500 });
   }
 }

@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from "mongoose";
 
-interface ITrending extends Document {
+export interface ITrending extends Document {
   coin_id: string;
   name: string;
   symbol: string;
