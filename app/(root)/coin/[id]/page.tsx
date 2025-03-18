@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
+import { useUserContext } from "@/providers/UserProvider";
 import TradingViewWidget from "@/components/coin/TradingViewWidget";
 import TradingSuggestion from "@/components/coin/TradingSuggestion";
 import ChartWidget from "@/components/coin/ChartWidget";
@@ -66,7 +67,6 @@ interface CoinData {
   selectedTicker?: Ticker; // New property from your API
 }
 
-
 export default function CoinPage() {
   const router = useRouter();
   const { isLoaded, user } = useUser();
@@ -75,7 +75,7 @@ export default function CoinPage() {
   const [error, setError] = useState<string | null>(null);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const hasFetched = useRef(new Set()); // ✅ Tracks fetched coin IDs
-
+  const { refreshUser } = useUserContext();
   const params = useParams() as { id: string };
   const coinId = params.id;
 
@@ -105,6 +105,7 @@ export default function CoinPage() {
           setCoin(result.coin);
           hasFetched.current.add(coinId); // ✅ Mark this coin as fetched
         }
+      await refreshUser();
       } catch (error: unknown) {
         const errorMessage =
           error instanceof Error ? error.message : "An unknown error occurred";
@@ -498,7 +499,7 @@ export default function CoinPage() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
-            <ChartWidget symbol={tradingViewSymbol}/>
+            <ChartWidget symbol={tradingViewSymbol} />
           </div>
           <div></div>
         </motion.div>

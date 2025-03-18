@@ -7,10 +7,12 @@ type SubscriptionTier = "free" | "basic" | "premium";
 
 type UserContextType = {
   isAuthenticated: boolean;
+  clerkId: string;
   tier: SubscriptionTier;
   credits: number;
   createdAt: string | null;
-  isContextLoaded: boolean; // New property to track if context data is loaded
+  isContextLoaded: boolean;
+  refreshUser: () => Promise<void>;
 };
 
 const UserContext = createContext<UserContextType | null>(null);
@@ -18,37 +20,46 @@ const UserContext = createContext<UserContextType | null>(null);
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoaded } = useUser();
   const [tier, setTier] = useState<SubscriptionTier>("free");
-  const [credits, setCredits] = useState<number>(20); 
+  const [credits, setCredits] = useState<number>(0); // start at 0
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [isContextLoaded, setIsContextLoaded] = useState<boolean>(false);
 
+  // Function to refresh user data from the backend.
+  const refreshUser = async () => {
+    if (!user) return;
+    try {
+      const data = await getUser(user.id);
+      if (data) {
+        setTier(data.subscriptionTier || "free");
+        setCredits(data.credits);
+        setCreatedAt(data.createdAt);
+      }
+    } catch (error) {
+      console.error("Failed to refresh user data:", error);
+    }
+  };
+
   useEffect(() => {
-    // If Clerk hasn't loaded yet, we're not ready
     if (!isLoaded) {
       setIsContextLoaded(false);
       return;
     }
-
-    // If no user is logged in, we're still "loaded" (just with default values)
     if (!user) {
       setIsContextLoaded(true);
       return;
     }
-
-    // Fetch user data from your backend
+    // Initial fetch
     getUser(user.id)
       .then((data) => {
         if (data) {
           setTier(data.subscriptionTier || "free");
-          setCredits(data.credits ?? 20);
+          setCredits(data.credits);
           setCreatedAt(data.createdAt);
         }
-        // Mark context as loaded regardless of whether we got data
         setIsContextLoaded(true);
       })
       .catch((error) => {
         console.error("Failed to fetch user data:", error);
-        // Even on error, we should mark as loaded to prevent infinite loading states
         setIsContextLoaded(true);
       });
   }, [isLoaded, user]);
@@ -57,10 +68,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     <UserContext.Provider
       value={{
         isAuthenticated: !!user,
+        clerkId: user ? user.id : "",
         tier,
         credits,
         createdAt,
-        isContextLoaded, // Include the new flag in the context value
+        isContextLoaded,
+        refreshUser,
       }}
     >
       {children}
