@@ -247,29 +247,64 @@ export async function POST(req: Request) {
     console.log(`Coin data processed: ${JSON.stringify(coinData)}`);
 
     const systemPrompt = `
-You are Grok, a crypto market expert AI with access to all data, including X posts. Deliver a short, unified summary (4-6 sentences, 100-150 words) for queries about coins or market news, blending insights without sections or raw data unless requested:
+You are Grok, a crypto market expert AI with access to all data, including X posts. Respond in 2 paragraphs, max 15 sentences total, with only the most critical insights for the user’s query. Exclude unnecessary explanations or raw data unless explicitly requested:
 
 **Instructions:**
-- For tickers with $ (e.g., $render), use coinData (current price, 24h change, 90-day historical summary) to analyze performance. Always base responses on this data, never fake it.
-- If historical data fails, say "I couldn’t fetch 90-day data" and use current data only.
-- For "N/A" prices, say "No data available for [coin]."
-- Mention if a coin is trending only if coinData.isTrending is true, e.g., "$[coin] is trending today."
-- For any @username in the message, search their X posts from the last 4 weeks for insights related to the query (e.g., coin mentions, updates), and include relevant findings.
-- For market-wide queries (e.g., "market news"), search X posts from the last 7 days from ${influencers.join(", ")} for crypto market insights, blending them into the response.
+- For tickers with $ (e.g., $render), use coinData (current price, 24h change, 90-day summary) for analysis. Base responses solely on this data.
+- If historical data fails, say "No 90-day data available" and use current data.
+- For "N/A" prices, say "No data for [coin]."
+- Note trending status only if coinData.isTrending is true, e.g., "$[coin] is trending."
+- When asked for MACD, RSI, or SMA, calculate from historical.prices (timestamp, price) using MACD (12, 26, 9), RSI (14), SMA (20). Provide latest values and a concise long/short signal, no formulas or data tables.
+- For @username, search their X posts (last 4 weeks) for query-related insights, report key findings only.
+- For market queries (e.g., "market news"), search X posts (last 7 days) from ${influencers.join(
+      ", "
+    )} for crypto insights, summarize briefly.
 
 **Top 20 Coins:**
-${topCoins.map((c) => `${c.name} (${c.symbol.toUpperCase()}): $${c.current_price?.toFixed(2) || "N/A"} (${c.price_change_percentage_24h?.toFixed(2) || "N/A"}% 24h)`).join("\n")}
+${topCoins
+  .map(
+    (c) =>
+      `${c.name} (${c.symbol.toUpperCase()}): $${
+        c.current_price?.toFixed(2) || "N/A"
+      } (${c.price_change_percentage_24h?.toFixed(2) || "N/A"}% 24h)`
+  )
+  .join("\n")}
 
-**Trending Coins (for market queries only):**
-${trendingCoins.map((c) => `${c.name} (${c.symbol.toUpperCase()}): $${c.market_data.price?.toFixed(2) || "N/A"}`).join("\n")}
+**Trending Coins (for market queries):**
+${trendingCoins
+  .map(
+    (c) =>
+      `${c.name} (${c.symbol.toUpperCase()}): $${
+        c.market_data.price?.toFixed(2) || "N/A"
+      }`
+  )
+  .join("\n")}
 
 **Specific Coin Data:**
-${Object.entries(coinData).map(([symbol, data]) => `${symbol}: Current $${data.current.price} (${data.current.change24h}% 24h), ${data.historical.summary}${data.isTrending ? " - Trending today!" : ""}`).join("\n") || "No specific coin data available."}
+${
+  Object.entries(coinData)
+    .map(
+      ([symbol, data]) =>
+        `${symbol}: Current $${data.current.price} (${
+          data.current.change24h
+        }% 24h), ${
+          data.historical.summary
+        }\nPrices (timestamp, price): ${JSON.stringify(
+          data.historical.prices
+        )}${data.isTrending ? " - Trending!" : ""}`
+    )
+    .join("\n") || "No coin data available."
+}
 
 **Influencer List for Market Queries:**
 ${influencers.join(", ")}
 
-**Timestamp:** ${new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}.
+**Timestamp:** ${new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })}.
 `;
     console.log("System prompt prepared");
 
@@ -286,8 +321,8 @@ ${influencers.join(", ")}
         ...chatHistory.slice(-5),
         { role: "user", content: message },
       ],
-      max_tokens: 400,
-      temperature: 0.3,
+      max_tokens: 200, // Reduced from 400 to enforce brevity
+      temperature: 0.2, // Lowered from 0.3 for more focused, less creative output
     });
     console.log("OpenAI response received");
 
