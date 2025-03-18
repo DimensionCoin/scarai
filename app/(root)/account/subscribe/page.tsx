@@ -35,14 +35,11 @@ export default function SubscribePage() {
     {
       id: 0,
       name: "basic",
-      description: "For growing businesses",
-      price: "$25 CAD",
-      credits: "2,500 credits monthly",
+      description: "For begginer investors",
+      price: "$25 USD",
+      credits: "1,250 credits monthly",
       features: [
-        "Full API access",
-        "Advanced analytics",
-        "Priority response time",
-        "Email support",
+       
       ],
       color: "from-teal-400 to-cyan-500",
       shadowColor: "rgba(45, 212, 191, 0.3)",
@@ -51,14 +48,11 @@ export default function SubscribePage() {
     {
       id: 1,
       name: "premium",
-      description: "For large enterprises",
-      price: "$50 CAD",
-      credits: "5,000 credits monthly",
+      description: "For experienced traders",
+      price: "$30 USD",
+      credits: "2,000 credits monthly",
       features: [
-        "Unlimited API access",
-        "Enterprise analytics",
-        "24/7 response time",
-        "Priority phone & email support",
+       
       ],
       color: "from-violet-400 to-indigo-500",
       shadowColor: "rgba(139, 92, 246, 0.3)",
