@@ -101,7 +101,7 @@ export default function SearchCoin() {
             onChange={handleInputChange}
             onFocus={() => setShowDropdown(true)}
             placeholder="Search over 5000 cryptocurrencies..."
-            className="w-full bg-transparent py-2 px-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none"
+            className="w-full bg-transparent py-2 px-3 text-base md:text-sm text-zinc-100 placeholder-zinc-500 outline-none"
           />
           {searchQuery && (
             <button

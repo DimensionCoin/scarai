@@ -272,12 +272,7 @@ export default function SubscribePage() {
               All plans include access to our core features. Subscription renews
               automatically.
             </p>
-            <p className="mt-2">
-              Need help choosing?{" "}
-              <a href="#" className="text-teal-400 hover:underline">
-                Contact our sales team
-              </a>
-            </p>
+            
           </div>
         </motion.div>
       </div>

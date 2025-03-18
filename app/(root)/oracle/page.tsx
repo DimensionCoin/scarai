@@ -340,7 +340,7 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask about crypto..."
-            className="w-full bg-black/20 border border-white/10 text-white text-sm placeholder-zinc-500 pr-10 py-2.5 rounded-lg focus-visible:ring-teal-500 focus-visible:border-teal-500/50 focus-visible:ring-offset-0"
+            className="w-full bg-black/20 border border-white/10 text-white text-base md:text-sm placeholder-zinc-500 pr-10 py-2.5 rounded-lg focus-visible:ring-teal-500 focus-visible:border-teal-500/50 focus-visible:ring-offset-0"
           />
           <Button
             onClick={sendMessage}
