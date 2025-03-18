@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
 import { hasEnoughCredits, deductCredits } from "@/actions/user.actions";
 
+// Define a Ticker interface with the fields you use
+interface Ticker {
+  base: string;
+  target: string;
+  market: {
+    name: string;
+    identifier: string;
+    has_trading_incentive: boolean;
+  };
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -33,8 +44,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Missing API key" }, { status: 500 });
     }
 
-    // Fetch coin data from CoinGecko
-    const url = `https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`;
+    // Fetch coin data from CoinGecko with tickers enabled
+    const url = `https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=true&market_data=true&community_data=false&developer_data=false&sparkline=false`;
     console.log(`Fetching from CoinGecko: ${url}`);
     const response = await fetch(url, {
       headers: {
@@ -53,14 +64,33 @@ export async function GET(req: Request) {
 
     const coinData = await response.json();
 
+    // Choose one ticker from coinData.tickers (markets)
+    let selectedTicker: Ticker | null = null;
+    if (
+      coinData.tickers &&
+      Array.isArray(coinData.tickers) &&
+      coinData.tickers.length > 0
+    ) {
+      // Now we type the tickers as Ticker[]
+      const tickers: Ticker[] = coinData.tickers;
+      // Try to select a ticker from Binance; if not available, use the first ticker
+      selectedTicker =
+        tickers.find(
+          (ticker: Ticker) =>
+            ticker.market && ticker.market.identifier === "binance"
+        ) || tickers[0];
+    }
+
     // Deduct credits after successful fetch
     await deductCredits(userId, 1);
     console.log(`Deducted 1 credit for user ${userId}`);
 
-    return NextResponse.json({ coin: coinData }, { status: 200 });
+    // Return the coin data along with the selected ticker
+    return NextResponse.json(
+      { coin: { ...coinData, selectedTicker } },
+      { status: 200 }
+    );
   } catch (error: unknown) {
-    // Changed to 'unknown'
-    // Handle the error as an Error type safely
     if (error instanceof Error) {
       console.error(`API Error: ${error.message}`, error.stack);
     } else {

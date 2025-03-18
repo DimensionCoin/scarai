@@ -23,13 +23,22 @@ import { useUser } from "@clerk/nextjs";
 import TradingViewWidget from "@/components/coin/TradingViewWidget";
 import TradingSuggestion from "@/components/coin/TradingSuggestion";
 
+interface Ticker {
+  base: string;
+  target: string;
+  market: {
+    name: string;
+    identifier: string;
+    has_trading_incentive: boolean;
+  };
+  // ... any other fields you need
+}
+
 interface CoinData {
   id: string;
   name: string;
   symbol: string;
-  image: {
-    large: string;
-  };
+  image: { large: string };
   market_data: {
     current_price: { usd: number };
     price_change_percentage_24h: number;
@@ -54,7 +63,9 @@ interface CoinData {
     string,
     { contract_address: string; decimal_place?: number }
   >;
+  selectedTicker?: Ticker; // New property from your API
 }
+
 
 export default function CoinPage() {
   const router = useRouter();
@@ -110,6 +121,13 @@ export default function CoinPage() {
       isMounted = false; // ✅ Cleanup to prevent multiple re-renders
     };
   }, [coinId, isLoaded, user]);
+
+  // Build TradingView symbol using selectedTicker if available
+  const tradingViewSymbol = coin?.selectedTicker
+    ? coin.selectedTicker.market.identifier.toLowerCase() === "binance"
+      ? `BINANCE:${coin.symbol.toUpperCase()}USDT`
+      : `${coin.selectedTicker.market.identifier.toUpperCase()}:${coin.symbol.toUpperCase()}${coin.selectedTicker.target.toUpperCase()}`
+    : `${coin?.symbol.toUpperCase()}USD`;
 
   const formatPrice = (price: number) => {
     if (price < 1) {
@@ -534,10 +552,9 @@ export default function CoinPage() {
           </div>
         </motion.div>
         <div className="w-full h-[220px] relative overflow-hidden rounded-xl backdrop-blur-xl mb-4">
-          <TradingViewWidget symbol={coin.symbol.toUpperCase()} />
+          <TradingViewWidget symbol={tradingViewSymbol} />
         </div>
         <div className="mt-2 mb-4">
-          
           <TradingSuggestion symbol={coin.id} />
         </div>
         <motion.div

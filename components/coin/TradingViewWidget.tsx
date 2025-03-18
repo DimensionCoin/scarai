@@ -1,8 +1,7 @@
-// components/coin/TradingViewWidget.jsx
 import React, { useEffect, useRef, memo } from "react";
 
 interface TradingViewWidgetProps {
-  symbol: string; // e.g., "BTC", "SHIB"
+  symbol: string; // Expected to be either "BTC" or, e.g., "BINANCE:BTCUSD"
 }
 
 function TradingViewWidget({ symbol }: TradingViewWidgetProps) {
@@ -11,12 +10,27 @@ function TradingViewWidget({ symbol }: TradingViewWidgetProps) {
   useEffect(() => {
     if (!symbol) return;
 
-    const uppercaseSymbol = symbol.toUpperCase();
-    console.log("TradingView Symbol:", `BINANCE:${uppercaseSymbol}USDT`); // Debug log
+    // If the symbol already contains a colon, assume it includes the market.
+    // Otherwise, default to Coinbase.
+    const tradingSymbol = symbol.includes(":")
+      ? symbol
+      : `COINBASE:${symbol.toUpperCase()}USD`;
+
+      console.log(`user is fetching for the symbol and market of ${tradingSymbol}`)
+
+    // Log the full TradingView symbol and, if available, log its parts.
+    if (tradingSymbol.includes(":")) {
+      const [market, baseSymbol] = tradingSymbol.split(":");
+      console.log("TradingView Market:", market);
+      console.log("TradingView Base Symbol:", baseSymbol);
+    } else {
+      console.log("Using default market: COINBASE");
+      console.log("TradingView Symbol:", tradingSymbol);
+    }
 
     // Clear existing content to prevent duplicates
     if (container.current) {
-      container.current.innerHTML = ""; // Reset container
+      container.current.innerHTML = "";
       const widgetDiv = document.createElement("div");
       widgetDiv.className = "tradingview-widget-container__widget";
       container.current.appendChild(widgetDiv);
@@ -28,7 +42,7 @@ function TradingViewWidget({ symbol }: TradingViewWidgetProps) {
     script.type = "text/javascript";
     script.async = true;
     script.innerHTML = JSON.stringify({
-      symbol: `COINBASE:${uppercaseSymbol}USD`, // Dynamic symbol with Binance
+      symbol: tradingSymbol,
       width: "100%",
       height: "100%",
       locale: "en",
@@ -46,7 +60,6 @@ function TradingViewWidget({ symbol }: TradingViewWidgetProps) {
     }
 
     return () => {
-      // Cleanup: Remove script and reset container
       if (container.current) {
         while (container.current.firstChild) {
           container.current.removeChild(container.current.firstChild);
@@ -57,7 +70,7 @@ function TradingViewWidget({ symbol }: TradingViewWidgetProps) {
 
   return (
     <div className="tradingview-widget-container" ref={container}>
-      {/* Widget will be injected here by the script */}
+      {/* Widget will be injected here */}
     </div>
   );
 }
