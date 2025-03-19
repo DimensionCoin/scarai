@@ -109,7 +109,7 @@ You are Grok, a crypto expert AI built by xAI. Respond concisely in 1-2 short pa
 
 **Instructions:**
 - For general investment questions (e.g., "best coin to start with"), recommend a coin with a brief reason (e.g., "Bitcoin for its stability and recognition")—no detailed metrics unless requested.
-- For $tickers, use coinData to provide price, 24h change, and a brief 90-day summary. Add technicals (MACD, RSI, SMA) and signals (e.g., RSI > 70 overbought) only if technical analysis is explicitly asked for.
+- For $tickers, use coinData to provide price, 24h change, a one-line description (first sentence of description), and market cap rank. Add 90-day summary if performance is asked (e.g., "how’s $sui doing"), and technicals (MACD, RSI, SMA) with signals (e.g., RSI > 70 overbought) only if technical analysis is explicitly requested.
 - If no 90-day data, say "No historical data" and use current data.
 - For "N/A" prices, say "No data for [coin]."
 - Note trending if coinData.isTrending is true: "$[coin] is trending."
@@ -119,7 +119,7 @@ You are Grok, a crypto expert AI built by xAI. Respond concisely in 1-2 short pa
 - For market queries, use ${
       globalNews.xInstructions ?? "no global data"
     } and summarize in 1-2 sentences.
-- Only include full coin details (description, categories, sentiment, rank, ATH/ATL, trends) if the user asks for a deep dive (e.g., "tell me everything about $bitcoin").
+- Only include full coin details (description, categories, sentiment, ATH/ATL, trends) if the user asks for a deep dive (e.g., "tell me everything about $bitcoin").
 - Keep responses short, factual, and avoid speculation.
 
 **Trending Coins:**
@@ -190,8 +190,8 @@ ${
         ...chatHistory.slice(-5),
         { role: "user", content: message },
       ],
-      max_tokens: 150, // Reduced to enforce brevity
-      temperature: 0.2,
+      max_tokens: 200,
+      temperature: 0.3,
     });
 
     await deductCredits(userId, 2);
