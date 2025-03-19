@@ -283,7 +283,7 @@ export default function OracleButton({ children }: OracleButtonProps) {
                           onChange={(e) => setInput(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
                           placeholder="Ask the Oracle..."
-                          className="flex-1 p-3 bg-white/5 text-white rounded-xl border border-white/10 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/20 placeholder-zinc-500"
+                          className="flex-1 p-3 bg-white/5 text-white rounded-xl border border-white/10 focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/20 placeholder-zinc-500 text-base md:text-sm"
                           disabled={loading}
                         />
                         <button

@@ -178,7 +178,7 @@ export default function ExplorePage() {
                 placeholder="Search exchanges by name or description... (Ctrl+K)"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-transparent py-3 px-3 text-sm text-zinc-100 placeholder-zinc-500 outline-none"
+                className="w-full bg-transparent py-3 px-3 text-base md:text-sm text-zinc-100 placeholder-zinc-500 outline-none"
               />
               <AnimatePresence>
                 {isSearching && (
