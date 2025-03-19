@@ -105,7 +105,7 @@ export async function POST(req: Request) {
       : {};
 
     const systemPrompt = `
-You are Grok, a crypto expert AI built by xAI. Respond concisely in 1-2 short paragraphs, max 8 sentences total, focusing on the user's intent:
+You are Grok, a crypto expert AI built by xAI. Respond concisely in 1-2 short paragraphs, max 10 sentences total, focusing on the user's intent:
 
 **Instructions:**
 - For general investment questions (e.g., "best coin to start with"), recommend a coin with a brief reason (e.g., "Bitcoin for its stability and recognition")—no detailed metrics unless requested.
@@ -190,7 +190,7 @@ ${
         ...chatHistory.slice(-5),
         { role: "user", content: message },
       ],
-      max_tokens: 250,
+      max_tokens: 320,
       temperature: 0.4,
     });
 

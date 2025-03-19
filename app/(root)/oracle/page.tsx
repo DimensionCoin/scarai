@@ -1,9 +1,9 @@
 "use client";
 
 import type React from "react";
-
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import {
   Loader2,
   Send,
@@ -16,12 +16,21 @@ import {
   DollarSignIcon,
   ChevronRight,
   LightbulbIcon,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UserButton } from "@clerk/nextjs";
 import { useUserContext } from "@/providers/UserProvider";
 import { useUser } from "@clerk/nextjs";
+
+// Cryptocurrency interface
+interface Cryptocurrency {
+  id: string;
+  name: string;
+  symbol: string;
+  image: string;
+}
 
 // Example queries that will be randomly selected - shorter for mobile
 const exampleQueries = [
@@ -58,9 +67,18 @@ export default function ChatPage() {
   const [showProTip, setShowProTip] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [inputHeight, setInputHeight] = useState(64); // Default height for input area
   const { refreshUser } = useUserContext();
   const { user } = useUser();
+
+  // Coin search state
+  const [showCoinDropdown, setShowCoinDropdown] = useState(false);
+  const [coinSearchQuery, setCoinSearchQuery] = useState("");
+  const [coinResults, setcoinResults] = useState<Cryptocurrency[]>([]);
+  const [coinSearchLoading, setCoinSearchLoading] = useState(false);
+  const [cursorPosition, setCursorPosition] = useState(0);
+  const [dollarSignIndex, setDollarSignIndex] = useState(-1);
 
   // Select random example queries on initial load
   useEffect(() => {
@@ -97,10 +115,61 @@ export default function ChatPage() {
     }
   }, [messages.length]);
 
+  // Handle clicks outside the coin dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowCoinDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // Fetch coin results when search query changes
+  useEffect(() => {
+    if (!coinSearchQuery.trim()) {
+      setcoinResults([]);
+      return;
+    }
+
+    const fetchResults = async () => {
+      setCoinSearchLoading(true);
+      try {
+        const response = await fetch(
+          `/api/coinlist?query=${encodeURIComponent(coinSearchQuery)}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setcoinResults(data.slice(0, 5)); // Limit to 5 results for better UX in chat
+        }
+      } catch (error) {
+        console.error("Error fetching coin search results:", error);
+      } finally {
+        setCoinSearchLoading(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      fetchResults();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [coinSearchQuery]);
+
   const sendMessage = async () => {
     if (!input.trim()) return;
 
     setShowProTip(false);
+    setShowCoinDropdown(false);
 
     const userMessage = { role: "user", content: input, timestamp: new Date() };
     setMessages([...messages, userMessage]);
@@ -154,11 +223,89 @@ export default function ChatPage() {
       setLoading(false);
     }
   };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      if (showCoinDropdown && coinResults.length > 0) {
+        // Select the first coin if dropdown is open
+        handleCoinSelect(coinResults[0].id);
+      } else {
+        sendMessage();
+      }
+    } else if (e.key === "Escape") {
+      setShowCoinDropdown(false);
+    } else if (
+      e.key === "ArrowDown" &&
+      showCoinDropdown &&
+      coinResults.length > 0
+    ) {
+      e.preventDefault();
+      // Could implement selection navigation here
     }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setInput(newValue);
+
+    // Get cursor position
+    const cursorPos = e.target.selectionStart || 0;
+    setCursorPosition(cursorPos);
+
+    // Check if the user just typed a $ character
+    const lastDollarIndex = newValue.lastIndexOf("$", cursorPos);
+
+    if (
+      lastDollarIndex !== -1 &&
+      (lastDollarIndex === 0 || newValue[lastDollarIndex - 1] === " ")
+    ) {
+      // Extract the partial coin name after the $ symbol
+      const partialCoin = newValue.substring(lastDollarIndex + 1, cursorPos);
+
+      // Only show dropdown and search if we have a $ followed by some text
+      if (partialCoin !== "") {
+        setDollarSignIndex(lastDollarIndex);
+        setCoinSearchQuery(partialCoin);
+        setShowCoinDropdown(true);
+      } else if (lastDollarIndex === cursorPos - 1) {
+        // Just the $ was typed, show all coins
+        setDollarSignIndex(lastDollarIndex);
+        setCoinSearchQuery("");
+        setShowCoinDropdown(true);
+      } else {
+        setShowCoinDropdown(false);
+      }
+    } else {
+      setShowCoinDropdown(false);
+    }
+  };
+
+  const handleCoinSelect = (coinId: string) => {
+    // Find the selected coin
+    const selectedCoin = coinResults.find((coin) => coin.id === coinId);
+    if (!selectedCoin) return;
+
+    // Replace the partial coin name with the full coin id
+    if (dollarSignIndex !== -1) {
+      const beforeDollar = input.substring(0, dollarSignIndex);
+      const afterPartialCoin = input.substring(cursorPosition);
+
+      // Set the new input value with the selected coin
+      const newInput = `${beforeDollar}$${selectedCoin.id}${afterPartialCoin}`;
+      setInput(newInput);
+
+      // Set cursor position after the inserted coin name
+      setTimeout(() => {
+        if (inputRef.current) {
+          const newPosition = dollarSignIndex + selectedCoin.id.length + 1; // +1 for the $ sign
+          inputRef.current.setSelectionRange(newPosition, newPosition);
+          inputRef.current.focus();
+        }
+      }, 0);
+    }
+
+    setShowCoinDropdown(false);
   };
 
   const formatTime = (date?: Date) => {
@@ -337,7 +484,7 @@ export default function ChatPage() {
           <Input
             ref={inputRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Ask about crypto..."
             className="w-full bg-black/20 border border-white/10 text-white text-base md:text-sm placeholder-zinc-500 pr-10 py-2.5 rounded-lg focus-visible:ring-teal-500 focus-visible:border-teal-500/50 focus-visible:ring-offset-0"
@@ -353,6 +500,70 @@ export default function ChatPage() {
               <Send className="h-3.5 w-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             )}
           </Button>
+
+          {/* Coin search dropdown */}
+          {showCoinDropdown && (
+            <div
+              ref={dropdownRef}
+              className="absolute bottom-full mb-1 left-0 w-full overflow-hidden rounded-lg border border-white/15 bg-black/50 backdrop-blur-xl shadow-lg z-20"
+            >
+              <div className="p-2 border-b border-white/10 flex items-center gap-2">
+                <Search className="h-3.5 w-3.5 text-teal-400" />
+                <span className="text-xs text-zinc-400">
+                  {coinSearchQuery
+                    ? `Searching for "${coinSearchQuery}"`
+                    : "Select a cryptocurrency"}
+                </span>
+              </div>
+
+              {coinSearchLoading ? (
+                <div className="p-4 text-center">
+                  <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-teal-400"></div>
+                  <p className="text-xs text-zinc-400 mt-1">Searching...</p>
+                </div>
+              ) : coinResults.length > 0 ? (
+                <div className="max-h-60 overflow-y-auto">
+                  {coinResults.map((crypto) => (
+                    <button
+                      key={crypto.id}
+                      onClick={() => handleCoinSelect(crypto.id)}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-black/20 cursor-pointer transition-colors border-b border-white/5 last:border-b-0 text-left"
+                    >
+                      <div className="h-6 w-6 rounded-full bg-zinc-800/50 flex items-center justify-center overflow-hidden">
+                        <Image
+                          src={crypto.image || "/default-coin.png"}
+                          alt={`${crypto.name} logo`}
+                          width={16}
+                          height={16}
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-zinc-100 truncate">
+                          {crypto.name}
+                        </p>
+                        <p className="text-xs text-zinc-500">
+                          ${crypto.id} <span className="opacity-50">•</span>{" "}
+                          {crypto.symbol.toUpperCase()}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : coinSearchQuery ? (
+                <div className="p-4 text-center">
+                  <p className="text-sm text-zinc-400">No results found</p>
+                </div>
+              ) : (
+                <div className="p-4 text-center">
+                  <p className="text-sm text-zinc-400">
+                    Type to search for cryptocurrencies
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
