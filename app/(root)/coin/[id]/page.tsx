@@ -123,11 +123,25 @@ export default function CoinPage() {
   }, [coinId, isLoaded, user?.id]); // Stable dependencies
 
   // Build TradingView symbol using selectedTicker if available
-  const tradingViewSymbol = coin?.selectedTicker
-    ? coin.selectedTicker.market.identifier.toLowerCase() === "binance"
-      ? `BINANCE:${coin.symbol.toUpperCase()}USDT`
-      : `${coin.selectedTicker.market.identifier.toUpperCase()}:${coin.symbol.toUpperCase()}${coin.selectedTicker.target.toUpperCase()}`
-    : `${coin?.symbol.toUpperCase()}USD`;
+  let tradingViewSymbol;
+
+  if (coin?.selectedTicker) {
+    const marketId = coin.selectedTicker.market.identifier.toLowerCase();
+    const symbol = coin.symbol.toUpperCase();
+
+    if (marketId === "binance") {
+      tradingViewSymbol = `BINANCE:${symbol}USDT`;
+    } else if (marketId === "gate") {
+      tradingViewSymbol = `GATEIO:${symbol}USDT`;
+    } else if (marketId === "gdax") {
+      tradingViewSymbol = `BYBIT:${symbol}USDT`;
+    } else {
+      tradingViewSymbol = `${coin.selectedTicker.market.identifier.toUpperCase()}:${symbol}${coin.selectedTicker.target.toUpperCase()}`;
+    }
+  } else {
+    tradingViewSymbol = `${coin?.symbol.toUpperCase()}USD`;
+  }
+
 
   const formatPrice = (price: number) => {
     if (price < 1) {
