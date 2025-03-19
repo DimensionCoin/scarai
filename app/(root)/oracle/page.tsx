@@ -263,8 +263,11 @@ export default function ChatPage() {
       // Extract the partial coin name after the $ symbol
       const partialCoin = newValue.substring(lastDollarIndex + 1, cursorPos);
 
-      // Only show dropdown and search if we have a $ followed by some text
-      if (partialCoin !== "") {
+      // Check if there's a space after the partial coin name
+      const hasSpaceAfter = partialCoin.includes(" ");
+
+      // Only show dropdown and search if we have a $ followed by some text without a space
+      if (partialCoin !== "" && !hasSpaceAfter) {
         setDollarSignIndex(lastDollarIndex);
         setCoinSearchQuery(partialCoin);
         setShowCoinDropdown(true);
@@ -305,6 +308,7 @@ export default function ChatPage() {
       }, 0);
     }
 
+    // Explicitly close the dropdown
     setShowCoinDropdown(false);
   };
 
@@ -505,7 +509,7 @@ export default function ChatPage() {
           {showCoinDropdown && (
             <div
               ref={dropdownRef}
-              className="absolute bottom-full mb-1 left-0 w-full overflow-hidden rounded-lg border border-white/15 bg-black/50 backdrop-blur-xl shadow-lg z-20"
+              className="absolute bottom-full mb-1 left-0 w-full overflow-hidden rounded-lg border border-white/15 bg-black/30 backdrop-blur-xl shadow-lg z-20"
             >
               <div className="p-2 border-b border-white/10 flex items-center gap-2">
                 <Search className="h-3.5 w-3.5 text-teal-400" />
@@ -527,7 +531,7 @@ export default function ChatPage() {
                     <button
                       key={crypto.id}
                       onClick={() => handleCoinSelect(crypto.id)}
-                      className="w-full flex items-center gap-3 p-3 hover:bg-black/20 cursor-pointer transition-colors border-b border-white/5 last:border-b-0 text-left"
+                      className="w-full flex items-center gap-3 p-3 hover:bg-white/5 cursor-pointer transition-colors border-b border-white/5 last:border-b-0 text-left"
                     >
                       <div className="h-6 w-6 rounded-full bg-zinc-800/50 flex items-center justify-center overflow-hidden">
                         <Image
