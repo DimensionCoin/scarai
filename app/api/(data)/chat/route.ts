@@ -172,12 +172,12 @@ ${
     })}.
 `;
 
-    console.log("=== Data Sent to AI ===");
+    {/*console.log("=== Data Sent to AI ===");
     console.log("User Message:", message);
     console.log("Coin Data:", JSON.stringify(coinData, null, 2));
     console.log("System Prompt:", systemPrompt);
     console.log("Chat History (last 5):", chatHistory.slice(-5));
-    console.log("======================");
+  console.log("======================");*/}
 
     const client = new OpenAI({
       apiKey: process.env.GROK_API_KEY!,
@@ -190,8 +190,8 @@ ${
         ...chatHistory.slice(-5),
         { role: "user", content: message },
       ],
-      max_tokens: 200,
-      temperature: 0.3,
+      max_tokens: 250,
+      temperature: 0.4,
     });
 
     await deductCredits(userId, 2);
