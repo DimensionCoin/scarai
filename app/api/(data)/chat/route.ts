@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { connect } from "@/db";
-import Crypto from "@/models/crypto.model";
 import Trending from "@/models/trending.model";
 import { hasEnoughCredits, deductCredits } from "@/actions/user.actions";
 import { fetchCoinData } from "@/hooks/chat/fetchCoinData";
@@ -9,7 +8,7 @@ import { fetchHistoricalData } from "@/hooks/chat/fetchHistoricalData";
 import { calculateIndicators } from "@/hooks/chat/calculateIndicators";
 import { fetchGlobalNews, GlobalNews } from "@/hooks/chat/fetchGlobalNews";
 
-// Define a specific type for coinData
+// Define the enriched CoinData interface (unchanged)
 interface CoinData {
   current: {
     price: string;
@@ -17,7 +16,40 @@ interface CoinData {
     volume: string;
     marketCap: string;
   };
-  historical: {
+  description: string;
+  categories: string[];
+  genesisDate: string | null;
+  sentiment: {
+    upPercentage: number;
+    downPercentage: number;
+  };
+  links: {
+    homepage: string[];
+    blockchainSites: string[];
+    twitter: string;
+    telegram: string;
+    reddit: string;
+    github: string[];
+  };
+  marketTrends: {
+    ath: string;
+    athDate: string;
+    atl: string;
+    atlDate: string;
+    change7d: string;
+    change14d: string;
+    change30d: string;
+  };
+  marketCapRank: number;
+  tickers: Array<{
+    base: string;
+    target: string;
+    marketName: string;
+    lastPrice: number;
+    volume: number;
+    convertedLastUsd: number;
+  }>;
+  historical?: {
     prices: number[][];
     summary: string;
     technicals: {
@@ -46,7 +78,6 @@ export async function POST(req: Request) {
     }
 
     await connect();
-    const topCoins = await Crypto.find().sort({ market_cap: -1 }).limit(20);
     const trendingCoins = await Trending.find()
       .sort({ market_cap_rank: 1 })
       .limit(10);
@@ -59,12 +90,11 @@ export async function POST(req: Request) {
     const coinData: Record<string, CoinData> = {};
     for (const ticker of tickerMatches) {
       const coinId = ticker.replace("$", "").toLowerCase();
-      const dbCoin = await Crypto.findOne({ id: coinId });
-      const current = await fetchCoinData(coinId, dbCoin);
+      const currentData = await fetchCoinData(coinId, null);
       const historical = await fetchHistoricalData(coinId);
       const indicators = calculateIndicators(historical.prices);
       coinData[coinId] = {
-        ...current,
+        ...currentData,
         historical: { ...historical, technicals: indicators },
         isTrending: trendingCoins.some((t) => t.id.toLowerCase() === coinId),
       };
@@ -75,34 +105,29 @@ export async function POST(req: Request) {
       : {};
 
     const systemPrompt = `
-You are Grok, a crypto expert AI. Respond in 2 paragraphs, max 15 sentences total, with critical insights only:
+You are Grok, a crypto expert AI built by xAI. Respond concisely in 1-2 short paragraphs, max 8 sentences total, focusing on the user's intent:
 
 **Instructions:**
-- For $tickers, use coinData for price, 24h change, 90-day summary, and technicals (MACD, RSI, SMA). Report latest values and long/short signals.
+- For general investment questions (e.g., "best coin to start with"), recommend a coin with a brief reason (e.g., "Bitcoin for its stability and recognition")—no detailed metrics unless requested.
+- For $tickers, use coinData to provide price, 24h change, and a brief 90-day summary. Add technicals (MACD, RSI, SMA) and signals (e.g., RSI > 70 overbought) only if technical analysis is explicitly asked for.
 - If no 90-day data, say "No historical data" and use current data.
 - For "N/A" prices, say "No data for [coin]."
 - Note trending if coinData.isTrending is true: "$[coin] is trending."
 - For @username from ${
       influencerMatches.length ? influencerMatches.join(", ") : "none mentioned"
-    }, search their X posts (last 4 weeks) for query insights, report key findings.
-- For market queries, use ${globalNews.xInstructions ?? "no global data"}.
-
-**Top Coins:**
-${topCoins
-  .map(
-    (c) =>
-      `${c.name} (${c.symbol.toUpperCase()}): $${
-        c.current_price?.toFixed(2) || "N/A"
-      } (${c.price_change_percentage_24h?.toFixed(2) || "N/A"}% 24h)`
-  )
-  .join("\n")}
+    }, search their X posts (last 4 weeks) for insights, report 1-2 key findings.
+- For market queries, use ${
+      globalNews.xInstructions ?? "no global data"
+    } and summarize in 1-2 sentences.
+- Only include full coin details (description, categories, sentiment, rank, ATH/ATL, trends) if the user asks for a deep dive (e.g., "tell me everything about $bitcoin").
+- Keep responses short, factual, and avoid speculation.
 
 **Trending Coins:**
 ${trendingCoins
   .map(
     (c) =>
       `${c.name} (${c.symbol.toUpperCase()}): $${
-        c.market_data.price?.toFixed(2) || "N/A"
+        c.market_data?.price?.toFixed(2) || "N/A"
       }`
   )
   .join("\n")}
@@ -110,18 +135,32 @@ ${trendingCoins
 **Coin Data:**
 ${
   Object.entries(coinData)
-    .map(
-      ([symbol, data]) =>
-        `${symbol}: $${data.current.price} (${data.current.change24h}% 24h), ${
-          data.historical.summary
-        }, MACD ${data.historical.technicals.macd?.macd.toFixed(
-          2
-        )}, RSI ${data.historical.technicals.rsi?.toFixed(
-          2
-        )}, SMA20 $${data.historical.technicals.sma?.sma20.toFixed(2)}${
-          data.isTrending ? " - Trending!" : ""
-        }`
-    )
+    .map(([symbol, data]) => {
+      return `${symbol}: $${data.current.price} (${
+        data.current.change24h
+      }% 24h), ${data.historical?.summary || "No historical data"}, MACD ${
+        data.historical?.technicals.macd?.macd.toFixed(2) || "N/A"
+      } (Signal ${
+        data.historical?.technicals.macd?.signal.toFixed(2) || "N/A"
+      }), RSI ${data.historical?.technicals.rsi?.toFixed(2) || "N/A"}, SMA20 $${
+        data.historical?.technicals.sma?.sma20.toFixed(2) || "N/A"
+      } - Description: ${data.description.slice(
+        0,
+        100
+      )}..., Categories: ${data.categories
+        .slice(0, 3)
+        .join(", ")}, Sentiment: ${data.sentiment.upPercentage}% up/${
+        data.sentiment.downPercentage
+      }% down, Rank: #${data.marketCapRank}, ATH: $${data.marketTrends.ath} (${
+        data.marketTrends.athDate
+      }), ATL: $${data.marketTrends.atl} (${
+        data.marketTrends.atlDate
+      }), Trends: 7d ${data.marketTrends.change7d}%, 14d ${
+        data.marketTrends.change14d
+      }%, 30d ${data.marketTrends.change30d}%${
+        data.isTrending ? " - Trending!" : ""
+      }`;
+    })
     .join("\n") || "No coin data."
 }
 
@@ -132,6 +171,13 @@ ${
       day: "numeric",
     })}.
 `;
+
+    console.log("=== Data Sent to AI ===");
+    console.log("User Message:", message);
+    console.log("Coin Data:", JSON.stringify(coinData, null, 2));
+    console.log("System Prompt:", systemPrompt);
+    console.log("Chat History (last 5):", chatHistory.slice(-5));
+    console.log("======================");
 
     const client = new OpenAI({
       apiKey: process.env.GROK_API_KEY!,
@@ -144,7 +190,7 @@ ${
         ...chatHistory.slice(-5),
         { role: "user", content: message },
       ],
-      max_tokens: 200,
+      max_tokens: 150, // Reduced to enforce brevity
       temperature: 0.2,
     });
 
