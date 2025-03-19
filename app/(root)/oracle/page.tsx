@@ -1,14 +1,11 @@
 "use client";
 
-import type React from "react";
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import {
   Loader2,
   Send,
-  Zap,
-  RefreshCw,
   Clock,
   Bitcoin,
   TrendingUp,
@@ -23,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { UserButton } from "@clerk/nextjs";
 import { useUserContext } from "@/providers/UserProvider";
 import { useUser } from "@clerk/nextjs";
+import LavaLampEffect from "@/components/shared/LavaLampEffect";
 
 // Cryptocurrency interface
 interface Cryptocurrency {
@@ -68,11 +66,10 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [inputHeight, setInputHeight] = useState(64); // Default height for input area
+  const [inputHeight, setInputHeight] = useState(64);
   const { refreshUser } = useUserContext();
   const { user } = useUser();
 
-  // Coin search state
   const [showCoinDropdown, setShowCoinDropdown] = useState(false);
   const [coinSearchQuery, setCoinSearchQuery] = useState("");
   const [coinResults, setcoinResults] = useState<Cryptocurrency[]>([]);
@@ -80,14 +77,11 @@ export default function ChatPage() {
   const [cursorPosition, setCursorPosition] = useState(0);
   const [dollarSignIndex, setDollarSignIndex] = useState(-1);
 
-  // Select random example queries on initial load
   useEffect(() => {
-    // Shuffle array and take first 3
     const shuffled = [...exampleQueries].sort(() => 0.5 - Math.random());
     setSuggestedQueries(shuffled.slice(0, 3));
   }, []);
 
-  // Measure input height for proper padding
   useEffect(() => {
     const inputArea = document.getElementById("chat-input-area");
     if (inputArea) {
@@ -96,12 +90,10 @@ export default function ChatPage() {
     }
   }, []);
 
-  // Auto-scrolling effect
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Initial welcome message
   useEffect(() => {
     if (messages.length === 0) {
       setMessages([
@@ -115,7 +107,6 @@ export default function ChatPage() {
     }
   }, [messages.length]);
 
-  // Handle clicks outside the coin dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -134,7 +125,6 @@ export default function ChatPage() {
     };
   }, []);
 
-  // Fetch coin results when search query changes
   useEffect(() => {
     if (!coinSearchQuery.trim()) {
       setcoinResults([]);
@@ -149,7 +139,7 @@ export default function ChatPage() {
         );
         if (response.ok) {
           const data = await response.json();
-          setcoinResults(data.slice(0, 5)); // Limit to 5 results for better UX in chat
+          setcoinResults(data.slice(0, 5));
         }
       } catch (error) {
         console.error("Error fetching coin search results:", error);
@@ -201,23 +191,16 @@ export default function ChatPage() {
       }
     } catch (error: unknown) {
       console.error("Error sending message:", error);
-
-      // Type guard to safely handle the error
       let errorMessage = "Something went wrong. Please try again.";
       if (error instanceof Error) {
         errorMessage = error.message;
       } else if (typeof error === "string") {
         errorMessage = error;
       }
-
       setMessages([
         ...messages,
         userMessage,
-        {
-          role: "assistant",
-          content: errorMessage,
-          timestamp: new Date(),
-        },
+        { role: "assistant", content: errorMessage, timestamp: new Date() },
       ]);
     } finally {
       setLoading(false);
@@ -228,20 +211,12 @@ export default function ChatPage() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (showCoinDropdown && coinResults.length > 0) {
-        // Select the first coin if dropdown is open
         handleCoinSelect(coinResults[0].id);
       } else {
         sendMessage();
       }
     } else if (e.key === "Escape") {
       setShowCoinDropdown(false);
-    } else if (
-      e.key === "ArrowDown" &&
-      showCoinDropdown &&
-      coinResults.length > 0
-    ) {
-      e.preventDefault();
-      // Could implement selection navigation here
     }
   };
 
@@ -249,30 +224,21 @@ export default function ChatPage() {
     const newValue = e.target.value;
     setInput(newValue);
 
-    // Get cursor position
     const cursorPos = e.target.selectionStart || 0;
     setCursorPosition(cursorPos);
 
-    // Check if the user just typed a $ character
     const lastDollarIndex = newValue.lastIndexOf("$", cursorPos);
-
     if (
       lastDollarIndex !== -1 &&
       (lastDollarIndex === 0 || newValue[lastDollarIndex - 1] === " ")
     ) {
-      // Extract the partial coin name after the $ symbol
       const partialCoin = newValue.substring(lastDollarIndex + 1, cursorPos);
-
-      // Check if there's a space after the partial coin name
       const hasSpaceAfter = partialCoin.includes(" ");
-
-      // Only show dropdown and search if we have a $ followed by some text without a space
       if (partialCoin !== "" && !hasSpaceAfter) {
         setDollarSignIndex(lastDollarIndex);
         setCoinSearchQuery(partialCoin);
         setShowCoinDropdown(true);
       } else if (lastDollarIndex === cursorPos - 1) {
-        // Just the $ was typed, show all coins
         setDollarSignIndex(lastDollarIndex);
         setCoinSearchQuery("");
         setShowCoinDropdown(true);
@@ -285,52 +251,38 @@ export default function ChatPage() {
   };
 
   const handleCoinSelect = (coinId: string) => {
-    // Find the selected coin
     const selectedCoin = coinResults.find((coin) => coin.id === coinId);
     if (!selectedCoin) return;
 
-    // Replace the partial coin name with the full coin id
     if (dollarSignIndex !== -1) {
       const beforeDollar = input.substring(0, dollarSignIndex);
       const afterPartialCoin = input.substring(cursorPosition);
-
-      // Set the new input value with the selected coin
       const newInput = `${beforeDollar}$${selectedCoin.id}${afterPartialCoin}`;
       setInput(newInput);
 
-      // Set cursor position after the inserted coin name
       setTimeout(() => {
         if (inputRef.current) {
-          const newPosition = dollarSignIndex + selectedCoin.id.length + 1; // +1 for the $ sign
+          const newPosition = dollarSignIndex + selectedCoin.id.length + 1;
           inputRef.current.setSelectionRange(newPosition, newPosition);
           inputRef.current.focus();
         }
       }, 0);
     }
-
-    // Explicitly close the dropdown
     setShowCoinDropdown(false);
   };
 
-  const formatTime = (date?: Date) => {
-    if (!date) return "";
-    return date.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const formatTime = (date?: Date) =>
+    date?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) || "";
 
   const handleExampleClick = (query: string) => {
     setInput(query);
     inputRef.current?.focus();
   };
 
-  // Calculate the bottom padding based on whether pro tip is shown
   const bottomPadding = showProTip ? inputHeight + 40 : inputHeight;
 
   return (
     <div className="flex flex-col relative w-full h-full">
-      {/* Messages container - with padding at bottom for fixed input */}
       <div
         className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent"
         style={{ paddingBottom: `${bottomPadding}px` }}
@@ -351,11 +303,13 @@ export default function ChatPage() {
                       <UserButton />
                     </div>
                   ) : (
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-teal-500 to-indigo-600 flex items-center justify-center">
-                      <Zap className="h-3.5 w-3.5 text-white" />
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center">
+                      <LavaLampEffect
+                        size={48} // Slightly smaller for clarity in small space
+                        containerStyle={{ transform: "scale(1)" }} // Ensure no extra scaling
+                      />
                     </div>
                   )}
-
                   <div className="flex-1 min-w-0">
                     <div
                       className={`text-sm ${
@@ -372,8 +326,6 @@ export default function ChatPage() {
                       <Clock className="h-2 w-2" />
                       {formatTime(msg.timestamp)}
                     </div>
-
-                    {/* Show example queries after the first assistant message and when there's only one message */}
                     {msg.role === "assistant" && messages.length === 1 && (
                       <div className="mt-3">
                         <p className="text-[10px] text-zinc-400 mb-1.5">
@@ -416,22 +368,25 @@ export default function ChatPage() {
           >
             <div className="w-full px-3 py-3">
               <div className="flex items-start gap-2">
-                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-teal-500 to-indigo-600 flex items-center justify-center">
-                  <RefreshCw className="h-3.5 w-3.5 text-white animate-spin" />
+                <div className="flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center">
+                  <LavaLampEffect
+                    size={48} // Consistent with message avatar
+                    containerStyle={{ transform: "scale(1)" }}
+                  />
                 </div>
                 <div className="flex-1">
                   <div className="bg-black/10 backdrop-blur-md rounded-xl border border-white/10 p-3">
                     <div className="flex space-x-2">
                       <div
-                        className="h-1.5 w-1.5 bg-teal-400 rounded-full animate-bounce"
+                        className="h-1.5 w-1.5 bg-cyan-400 rounded-full animate-bounce"
                         style={{ animationDelay: "0ms" }}
                       ></div>
                       <div
-                        className="h-1.5 w-1.5 bg-teal-400 rounded-full animate-bounce"
+                        className="h-1.5 w-1.5 bg-cyan-400 rounded-full animate-bounce"
                         style={{ animationDelay: "150ms" }}
                       ></div>
                       <div
-                        className="h-1.5 w-1.5 bg-teal-400 rounded-full animate-bounce"
+                        className="h-1.5 w-1.5 bg-cyan-400 rounded-full animate-bounce"
                         style={{ animationDelay: "300ms" }}
                       ></div>
                     </div>
@@ -445,7 +400,6 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Pro Tip - appears above input and disappears after first message */}
       <AnimatePresence>
         {showProTip && (
           <motion.div
@@ -479,7 +433,6 @@ export default function ChatPage() {
         )}
       </AnimatePresence>
 
-      {/* Input area - fixed to bottom */}
       <div
         id="chat-input-area"
         className="fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t border-white/10 pt-2 pb-3 py-2 px-2 z-10 md:ml-50"
@@ -505,7 +458,6 @@ export default function ChatPage() {
             )}
           </Button>
 
-          {/* Coin search dropdown */}
           {showCoinDropdown && (
             <div
               ref={dropdownRef}
@@ -519,7 +471,6 @@ export default function ChatPage() {
                     : "Select a cryptocurrency"}
                 </span>
               </div>
-
               {coinSearchLoading ? (
                 <div className="p-4 text-center">
                   <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-teal-400"></div>

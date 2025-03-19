@@ -9,7 +9,6 @@ import {
   CreditCard,
   User,
   Shield,
-  TrendingUp,
   ChevronDown,
   LayoutDashboard,
   Search,
@@ -34,6 +33,7 @@ import { usePathname } from "next/navigation";
 import { CreditsProgressBar } from "./CreditsProgressBar";
 import { useUserContext } from "@/providers/UserProvider";
 import LoadingScreen from "./LoadingScreen";
+import LavaLampEffect from "./LavaLampEffect";
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
 const Header = () => {
@@ -98,7 +98,7 @@ const Header = () => {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-40 flex justify-between items-center w-full py-3 px-4 md:px-6 ">
+      <header className="fixed top-0 left-0 right-0 z-40 flex justify-between items-center w-full py-2 px-4 md:px-6 ">
         {/* Glassmorphism background */}
         <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-xl shadow-[0_4px_15px_rgba(0,0,0,0.3)] md:shadow-[0_4px_15px_-8px_rgba(0,0,0,0.3),_4px_0_15px_-8px_rgba(0,0,0,0.3)]"></div>
 
@@ -112,21 +112,17 @@ const Header = () => {
         {/* Content */}
         <div className="relative z-10 flex justify-between items-center w-full">
           {/* Left side - Logo/Menu */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center ">
             {/* Logo that toggles mobile menu on small screens */}
             <button
               className="relative group focus:outline-none"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-teal-400/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity blur-sm"></div>
-              <div className="relative">
-                <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-teal-400 via-cyan-400 to-indigo-500 opacity-80 blur-sm"></div>
-                <div className="relative bg-zinc-900/80 backdrop-blur-sm rounded-full p-2.5 shadow-[0_0_10px_rgba(45,212,191,0.3)]">
-                  <TrendingUp className="h-5 w-5 text-teal-400" />
-                </div>
+              <div className="h-14 w-14 rounded-full flex items-center justify-center overflow-hidden ">
+                <LavaLampEffect />
               </div>
             </button>
-
             <h2 className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-teal-400 via-cyan-400 to-violet-500 tracking-wide">
               SCAR
             </h2>

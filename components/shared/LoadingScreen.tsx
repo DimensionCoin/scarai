@@ -1,6 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+
+// Dynamically import the LavaLampEffect to avoid SSR issues
+const LavaLampEffect = dynamic(() => import("@/components/shared/LavaLampEffect"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-40 w-40 rounded-full bg-gradient-to-br from-teal-400/30 to-indigo-500/30 animate-pulse"></div>
+  ),
+});
 
 export default function LoadingScreen() {
   const [progress, setProgress] = useState(0);
@@ -18,7 +27,7 @@ export default function LoadingScreen() {
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-zinc-950/5 z-50 flex items-center justify-center overflow-hidden">
+    <div className="fixed inset-0 bg-zinc-950 z-50 flex items-center justify-center overflow-hidden">
       {/* Background subtle gradient */}
       <div className="absolute inset-0 bg-gradient-radial from-zinc-900 to-zinc-950 opacity-80"></div>
 
@@ -45,13 +54,11 @@ export default function LoadingScreen() {
         <div className="absolute inset-0 bg-gradient-to-br from-teal-400/10 to-indigo-500/10"></div>
 
         <div className="relative p-8 flex flex-col items-center">
-          {/* Logo */}
-          <div className="relative mb-8 h-16 w-16 flex items-center justify-center">
+          {/* Lava Lamp Effect - Centered with fixed size */}
+          <div className="relative mb-8 flex items-center justify-center">
             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-teal-400/20 to-indigo-500/20 blur-md"></div>
-            <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-teal-400 to-indigo-500 flex items-center justify-center">
-              <div className="h-10 w-10 rounded-full bg-zinc-950/80 flex items-center justify-center">
-                <div className="h-6 w-6 rounded-full bg-gradient-to-br from-teal-400 to-indigo-500"></div>
-              </div>
+            <div className="relative h-56 w-56 rounded-full bg-black/30 backdrop-blur-sm overflow-hidden flex items-center justify-center">
+              <LavaLampEffect size={240} />
             </div>
           </div>
 
