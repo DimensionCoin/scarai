@@ -6,7 +6,7 @@ import {
   LayoutDashboard,
   Search,
   Newspaper,
-  TargetIcon,
+  CoinsIcon,
   ChevronRight,
 } from "lucide-react";
 import { GiCrystalBall } from "react-icons/gi";
@@ -28,7 +28,12 @@ const Sidebar = () => {
       icon: GiCrystalBall,
     },
     {
-      name: "Explore",
+      name: "Coins",
+      href: "/coinpage",
+      icon: CoinsIcon,
+    },
+    {
+      name: "Exchanges",
       href: "/explore",
       icon: Search,
     },
@@ -37,11 +42,6 @@ const Sidebar = () => {
       name: "News",
       href: "/news",
       icon: Newspaper,
-    },
-    {
-      name: "Screener",
-      href: "/wallet",
-      icon: TargetIcon,
     },
   ];
 

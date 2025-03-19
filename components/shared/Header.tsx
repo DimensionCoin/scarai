@@ -14,7 +14,8 @@ import {
   LayoutDashboard,
   Search,
   Newspaper,
-  TargetIcon,
+  
+  CoinsIcon,
 } from "lucide-react";
 import { GiCrystalBall } from "react-icons/gi";
 import { Button } from "../ui/button";
@@ -52,8 +53,13 @@ const Header = () => {
       href: "/oracle",
       icon: GiCrystalBall,
     },
+       {
+      name: "Coins",
+      href: "/coinpage",
+      icon: CoinsIcon,
+    },
     {
-      name: "Explore",
+      name: "Exchanges",
       href: "/explore",
       icon: Search,
     },
@@ -63,11 +69,7 @@ const Header = () => {
       href: "/news",
       icon: Newspaper,
     },
-    {
-      name: "Screener",
-      href: "/wallet",
-      icon: TargetIcon,
-    },
+    
   ];
 
   const fetchUserData = useCallback(async (userId: string) => {
