@@ -12,7 +12,14 @@ const SuccessPage = () => {
   const [countdown, setCountdown] = useState(3);
 
   useEffect(() => {
-    const sessionId = searchParams.get("session_id");
+    // Get the session ID but comment out to avoid unused variable warning
+    // const sessionId = searchParams.get("session_id");
+
+    // If you need to use it later, you can uncomment and use it like this:
+    // if (sessionId) {
+    //   // Verify the session with your backend
+    //   console.log("Verifying session:", sessionId);
+    // }
 
     // Countdown effect
     const countdownInterval = setInterval(() => {
@@ -78,7 +85,7 @@ const SuccessPage = () => {
 
           {/* Message */}
           <p className="text-zinc-300 text-sm text-center mb-6">
-            Thank you for your purchase. We've sent a receipt to your email
+            Thank you for your purchase. We&apos;ve sent a receipt to your email
             address.
           </p>
 
