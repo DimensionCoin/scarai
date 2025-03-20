@@ -39,7 +39,7 @@ const Sidebar = () => {
     },
 
     {
-      name: "News",
+      name: "Insights",
       href: "/news",
       icon: Newspaper,
     },

@@ -370,6 +370,8 @@ export default function Settings() {
                         <Image
                           src={user.imageUrl || "/placeholder.svg"}
                           alt={user.firstName || "User"}
+                          width={25}
+                          height={25}
                           className="h-full w-full object-cover"
                         />
                       ) : (

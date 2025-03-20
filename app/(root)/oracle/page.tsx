@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
@@ -32,9 +34,9 @@ interface Cryptocurrency {
 
 // Example queries that will be randomly selected - shorter for mobile
 const exampleQueries = [
-  "Current $BTC price trend?",
+  "Current /BTC price trend?",
   "How do interest rates affect crypto?",
-  "Compare $BTC and $ETH investments",
+  "Compare /BTC and /ETH investments",
   "Top 5 altcoins to watch",
   "Explain DeFi simply",
   "How does blockchain work?",
@@ -43,7 +45,7 @@ const exampleQueries = [
   "Proof of work vs proof of stake?",
   "How to evaluate crypto projects?",
   "Crypto investing risks?",
-  "How is $SOL performing today",
+  "How is /SOL performing today",
   "has @ansem said anything about meme coins",
 ];
 
@@ -227,19 +229,19 @@ export default function ChatPage() {
     const cursorPos = e.target.selectionStart || 0;
     setCursorPosition(cursorPos);
 
-    const lastDollarIndex = newValue.lastIndexOf("$", cursorPos);
+    const lastSlashIndex = newValue.lastIndexOf("/", cursorPos);
     if (
-      lastDollarIndex !== -1 &&
-      (lastDollarIndex === 0 || newValue[lastDollarIndex - 1] === " ")
+      lastSlashIndex !== -1 &&
+      (lastSlashIndex === 0 || newValue[lastSlashIndex - 1] === " ")
     ) {
-      const partialCoin = newValue.substring(lastDollarIndex + 1, cursorPos);
+      const partialCoin = newValue.substring(lastSlashIndex + 1, cursorPos);
       const hasSpaceAfter = partialCoin.includes(" ");
       if (partialCoin !== "" && !hasSpaceAfter) {
-        setDollarSignIndex(lastDollarIndex);
+        setDollarSignIndex(lastSlashIndex);
         setCoinSearchQuery(partialCoin);
         setShowCoinDropdown(true);
-      } else if (lastDollarIndex === cursorPos - 1) {
-        setDollarSignIndex(lastDollarIndex);
+      } else if (lastSlashIndex === cursorPos - 1) {
+        setDollarSignIndex(lastSlashIndex);
         setCoinSearchQuery("");
         setShowCoinDropdown(true);
       } else {
@@ -255,14 +257,14 @@ export default function ChatPage() {
     if (!selectedCoin) return;
 
     if (dollarSignIndex !== -1) {
-      const beforeDollar = input.substring(0, dollarSignIndex);
+      const beforeSlash = input.substring(0, dollarSignIndex);
       const afterPartialCoin = input.substring(cursorPosition);
-      const newInput = `${beforeDollar}$${selectedCoin.id}${afterPartialCoin}`;
+      const newInput = `${beforeSlash}/${selectedCoin.id} ${afterPartialCoin}`;
       setInput(newInput);
 
       setTimeout(() => {
         if (inputRef.current) {
-          const newPosition = dollarSignIndex + selectedCoin.id.length + 1;
+          const newPosition = dollarSignIndex + selectedCoin.id.length + 2; // +2 for the slash and space
           inputRef.current.setSelectionRange(newPosition, newPosition);
           inputRef.current.focus();
         }
@@ -417,14 +419,13 @@ export default function ChatPage() {
                   <span className="text-teal-400 font-medium">Pro tip:</span>{" "}
                   Use{" "}
                   <span className="inline-flex items-center bg-black/20 px-1 py-0.5 rounded text-teal-400">
-                    <DollarSignIcon className="h-2 w-2" />
-                    coin-name
+                    /coin-name
                   </span>{" "}
                   for coin data (e.g.,{" "}
-                  <span className="font-medium">$hedera-hashgraph</span>,{" "}
-                  <span className="font-medium">$the-open-network</span>,{" "}
-                  <span className="font-medium">$solana</span>). To search X
-                  posts, mention a username (e.g.,{" "}
+                  <span className="font-medium">/hedera-hashgraph</span>,{" "}
+                  <span className="font-medium">/the-open-network</span>,{" "}
+                  <span className="font-medium">/solana</span>
+                  ). To search X posts, mention a username (e.g.,{" "}
                   <span className="font-medium">@cz_binance</span>).
                 </p>
               </div>

@@ -27,7 +27,7 @@ export default function LoadingScreen() {
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-zinc-950/20 z-50 flex items-center justify-center overflow-hidden">
+    <div className="fixed inset-0 bg-zinc-950/10 z-50 flex items-center justify-center overflow-hidden">
       {/* Background subtle gradient */}
       <div className="absolute inset-0 bg-gradient-radial from-zinc-900 to-zinc-950 opacity-80"></div>
 
@@ -36,7 +36,7 @@ export default function LoadingScreen() {
         {Array.from({ length: 20 }).map((_, i) => (
           <div
             key={i}
-            className="absolute rounded-full bg-teal-400/30"
+            className="absolute rounded-full"
             style={{
               width: `${Math.random() * 4 + 1}px`,
               height: `${Math.random() * 4 + 1}px`,
@@ -51,7 +51,7 @@ export default function LoadingScreen() {
       {/* Glass card container */}
       <div className="relative w-80 md:w-96 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl">
         {/* Highlight effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-teal-400/10 to-indigo-500/10"></div>
+        <div className="absolute inset-0 "></div>
 
         <div className="relative p-8 flex flex-col items-center">
           {/* Lava Lamp Effect - Centered with fixed size */}

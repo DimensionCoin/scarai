@@ -61,6 +61,24 @@ interface CoinData {
   isTrending?: boolean;
 }
 
+const INFLUENCERS = [
+  "@WatcherGuru",
+  "@CryptoWhale",
+  "@elonmusk",
+  "@APompliano",
+  "@balajis",
+  "@cz_binance",
+  "@zerohedge",
+  "@federalreserve",
+  "@coinbureau",
+  "@BloombergMarkets",
+  "@ReutersBiz",
+  "@CoinDesk",
+  "@FinancialTimes",
+  "@BTC_Archive",
+  "@DavidSacks",
+];
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -82,14 +100,14 @@ export async function POST(req: Request) {
       .sort({ market_cap_rank: 1 })
       .limit(10);
 
-    const tickerMatches = message.match(/\$([a-zA-Z0-9-]+)/g) || [];
+    const tickerMatches = message.match(/\/([a-zA-Z0-9-]+)/g) || [];
     const influencerMatches: string[] =
       message.match(/@([A-Za-z0-9_]+)/g) || [];
     const isGlobalQuery = /market.*(today|performing|news)/i.test(message);
 
     const coinData: Record<string, CoinData> = {};
     for (const ticker of tickerMatches) {
-      const coinId = ticker.replace("$", "").toLowerCase();
+      const coinId = ticker.replace("/", "").toLowerCase();
       const currentData = await fetchCoinData(coinId, null);
       const historical = await fetchHistoricalData(coinId);
       const indicators = calculateIndicators(historical.prices);
@@ -100,27 +118,31 @@ export async function POST(req: Request) {
       };
     }
 
+    // Fetch global news instructions if it's a market query
     const globalNews: GlobalNews = isGlobalQuery
-      ? fetchGlobalNews("crypto market")
+      ? await fetchGlobalNews("crypto market")
       : {};
 
     const systemPrompt = `
-You are Grok, a crypto expert AI built by xAI. Respond concisely in 1-2 short paragraphs, max 10 sentences total, focusing on the user's intent:
+You are Grok, a crypto quant trading assistant built by xAI, designed to crunch numbers and provide research for traders from beginner to expert. Respond concisely in 1-2 paragraphs, max 10 sentences total, focusing on the user's intent:
 
 **Instructions:**
-- For general investment questions (e.g., "best coin to start with"), recommend a coin with a brief reason (e.g., "Bitcoin for its stability and recognition")—no detailed metrics unless requested.
-- For $tickers, use coinData to provide price, 24h change, a one-line description (first sentence of description), and market cap rank. Add 90-day summary if performance is asked (e.g., "how’s $sui doing"), and technicals (MACD, RSI, SMA) with signals (e.g., RSI > 70 overbought) only if technical analysis is explicitly requested.
-- If no 90-day data, say "No historical data" and use current data.
-- For "N/A" prices, say "No data for [coin]."
-- Note trending if coinData.isTrending is true: "$[coin] is trending."
+- For general questions (e.g., "best coin to start with"), suggest a coin with a data-driven reason (e.g., "Bitcoin: highest market cap, stable for beginners").
+- For /tickers, provide price, 24h change, a one-line description (first sentence of description), and market cap rank. Add 90-day summary if performance is asked (e.g., "how’s /sui doing").
+- For timeframe-specific requests (e.g., "2-hour indicators for /solana"), use historical.prices (90-day daily data) if available. If the requested timeframe (e.g., 2h) isn’t supported, say "I only have daily data for /coin; here’s the daily analysis. Provide 2-hour prices if you want me to crunch those." Then give daily support/resistance (recent highs/lows from historical.prices), MACD, RSI, SMA20, and long/short advice.
+- If users provide prices (e.g., "here’s 2h data: $130, $132..."), calculate indicators and give precise trading advice (entry, stop-loss, take-profit) based on that data.
+- If no historical data, say "No historical data" and use current data. For "N/A" prices, say "No data for [coin]."
+- Note trending if coinData.isTrending is true: "/[coin] is trending."
 - For @username from ${
       influencerMatches.length ? influencerMatches.join(", ") : "none mentioned"
-    }, search their X posts (last 4 weeks) for insights, report 1-2 key findings.
-- For market queries, use ${
-      globalNews.xInstructions ?? "no global data"
-    } and summarize in 1-2 sentences.
-- Only include full coin details (description, categories, sentiment, ATH/ATL, trends) if the user asks for a deep dive (e.g., "tell me everything about $bitcoin").
-- Keep responses short, factual, and avoid speculation.
+    }, search their X posts (last 4 weeks) for insights, report 1-2 findings.
+- For market queries (e.g., "global news" or "market today"), use ${
+      globalNews.xInstructions || "no global instructions"
+    } plus key influencers (${INFLUENCERS.join(", ")}) and any mentioned (${
+      influencerMatches.length ? influencerMatches.join(", ") : "none"
+    }) to summarize X sentiment in 1-2 sentences (e.g., "Market up, @elonmusk bullish on BTC").
+- For allocation questions (e.g., "split $100 between /solana and /ethereum"), analyze coinData (price, 24h change, 90-day trend, trending status), favor momentum (24h change > 5% or trending) for short-term, stability (market cap rank < 10) for long-term, and explain split.
+- Act as a quant: focus on data-driven trading advice, research, and number-crunching to save traders time.
 
 **Trending Coins:**
 ${trendingCoins
@@ -164,6 +186,9 @@ ${
     .join("\n") || "No coin data."
 }
 
+**Global News Instructions:**
+${globalNews.xInstructions || "No global news instructions available."}
+
 **Timestamp:** ${new Date().toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
@@ -171,13 +196,6 @@ ${
       day: "numeric",
     })}.
 `;
-
-    {/*console.log("=== Data Sent to AI ===");
-    console.log("User Message:", message);
-    console.log("Coin Data:", JSON.stringify(coinData, null, 2));
-    console.log("System Prompt:", systemPrompt);
-    console.log("Chat History (last 5):", chatHistory.slice(-5));
-  console.log("======================");*/}
 
     const client = new OpenAI({
       apiKey: process.env.GROK_API_KEY!,

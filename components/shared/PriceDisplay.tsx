@@ -119,7 +119,7 @@ const CryptoPriceHero: React.FC = () => {
         <div className="relative p-1.5 sm:p-4">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <h2 className="text-xs sm:text-sm font-medium text-zinc-300">
-              Watchlist
+              Live Prices
             </h2>
             <Button
               variant="ghost"
@@ -141,11 +141,8 @@ const CryptoPriceHero: React.FC = () => {
                   : coin.id.toLowerCase();
                 const priceData = prices[normId];
                 return (
-                  <Link href={`/coin/${coin.name.toLowerCase()}`}>
-                    <div
-                      key={coin.id}
-                      className="relative rounded-lg overflow-hidden aspect-[4/3] sm:aspect-[3/2] sm:max-h-[160px] md:max-h-[180px] border border-white/10 hover:border-white/20 transition-colors"
-                    >
+                  <Link href={`/coin/${coin.name.toLowerCase()}`} key={coin.id}>
+                    <div className="relative rounded-lg overflow-hidden aspect-[4/3] sm:aspect-[3/2] sm:max-h-[160px] md:max-h-[180px] border border-white/10 hover:border-white/20 transition-colors">
                       {/* Background */}
                       <div className="absolute inset-0 bg-black/40">
                         {coin.image && (
@@ -167,13 +164,13 @@ const CryptoPriceHero: React.FC = () => {
                           <div className="bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-medium text-zinc-300">
                             {coin.symbol.toUpperCase()}
                           </div>
-                          <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                          <div className="h-8 w-8 sm:h-12 sm:w-12 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center overflow-hidden">
                             {coin.image ? (
                               <Image
                                 src={coin.image || "/placeholder.svg"}
                                 alt={coin.name}
-                                width={16}
-                                height={16}
+                                width={40}
+                                height={40}
                                 className="object-cover"
                                 unoptimized
                               />
@@ -227,13 +224,13 @@ const CryptoPriceHero: React.FC = () => {
       {/* Coin Selection Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="relative w-full max-w-md rounded-xl border border-white/15 bg-black/80 backdrop-blur-xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md rounded-xl border border-white/15 bg-black/40 backdrop-blur-xl shadow-2xl overflow-hidden"
             >
               <div className="p-4 border-b border-white/10">
                 <div className="flex items-center justify-between">
@@ -289,10 +286,10 @@ const CryptoPriceHero: React.FC = () => {
                         className={`flex items-center p-3 rounded-lg mb-1 cursor-pointer transition-colors ${
                           isSelected
                             ? "bg-teal-500/10 border border-teal-500/30"
-                            : "bg-white/5 border border-white/10 hover:bg-white/10"
+                            : "bg-blackl/40 border border-white/10 hover:bg-white/20 hover:border-black"
                         }`}
                       >
-                        <div className="h-8 w-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center overflow-hidden mr-3">
+                        <div className="h-8 w-8 rounded-full bg-black/80 backdrop-blur-sm flex items-center justify-center overflow-hidden mr-3">
                           {coin.image ? (
                             <Image
                               src={coin.image || "/placeholder.svg"}
@@ -338,7 +335,7 @@ const CryptoPriceHero: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => setIsModalOpen(false)}
-                  className="border-white/10 text-zinc-300 hover:bg-white/10 hover:text-white"
+                  className="border-white/10 text-zinc-800 hover:bg-white/30 hover:text-black"
                 >
                   Cancel
                 </Button>

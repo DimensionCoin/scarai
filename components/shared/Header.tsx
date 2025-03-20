@@ -53,7 +53,7 @@ const Header = () => {
       href: "/oracle",
       icon: GiCrystalBall,
     },
-       {
+    {
       name: "Coins",
       href: "/coinpage",
       icon: CoinsIcon,
@@ -65,11 +65,10 @@ const Header = () => {
     },
 
     {
-      name: "News",
+      name: "Insights",
       href: "/news",
       icon: Newspaper,
     },
-    
   ];
 
   const fetchUserData = useCallback(async (userId: string) => {
