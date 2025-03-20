@@ -118,7 +118,7 @@ const CryptoPriceHero: React.FC = () => {
         <div className="relative p-1.5 sm:p-4">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <h2 className="text-xs sm:text-sm font-medium text-zinc-300">
-              Live Crypto Prices
+              Watchlist
             </h2>
             <Button
               variant="ghost"
@@ -126,7 +126,7 @@ const CryptoPriceHero: React.FC = () => {
               className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-teal-400"
               onClick={() => setIsModalOpen(true)}
             >
-              <Settings className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              <Settings className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-teal-400" />
             </Button>
           </div>
           {isLoading ? (

@@ -12,8 +12,8 @@ const Dash = () => {
       <SearchCoin />
       <PriceDisplay />
       <Trending />
-      <LatestArticle />
       <MarketCapWidget />
+      <LatestArticle />
       <TopCoins />
     </div>
   );

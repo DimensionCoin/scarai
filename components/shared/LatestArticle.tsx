@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import {
-  CalendarIcon,
   Twitter,
   Sparkles,
   ArrowRight,
@@ -203,97 +202,103 @@ export default function LatestArticle() {
           {/* Subtle glow effect on hover */}
           <div className="absolute -inset-0.5 bg-gradient-to-r from-teal-500/0 to-indigo-500/0 rounded-xl opacity-0 group-hover:from-teal-500/20 group-hover:to-indigo-500/20 blur transition duration-300"></div>
 
-          <div className="relative z-10 p-3 md:p-4 flex flex-col md:flex-row items-start md:items-center gap-3 md:gap-4">
-            {/* Calendar date display */}
-            <div className="flex-shrink-0 border border-white/10 bg-black/20 backdrop-blur-md rounded-lg overflow-hidden w-16 h-16 md:w-20 md:h-20 flex flex-col items-center justify-center group-hover:border-teal-500/30 transition-colors">
-              <span className="text-teal-400 text-xs font-medium">
-                {dateFormatted.month}
-              </span>
-              <span className="text-zinc-100 text-xl md:text-3xl font-bold leading-none">
-                {dateFormatted.day}
-              </span>
-              <span className="text-zinc-500 text-xs">
-                {dateFormatted.year}
-              </span>
-            </div>
-
-            {/* Article title and stats */}
-            <div className="flex-grow min-w-0 md:max-w-[40%]">
-              <div className="flex items-center gap-1 mb-1">
-                <Sparkles className="h-3 w-3 text-teal-400" />
-                <span className="text-xs text-zinc-500">Latest Analysis</span>
-              </div>
-              <h3 className="text-base md:text-lg font-medium text-zinc-100 group-hover:text-teal-400 transition-colors line-clamp-2 mb-1">
-                {article.title}
-              </h3>
-
-              <div className="flex flex-wrap gap-2 mt-1">
-                {article.influencers && article.influencers.length > 0 && (
-                  <div className="flex items-center gap-1 text-xs border border-white/5 bg-black/20 backdrop-blur-md px-1.5 py-0.5 rounded-full">
-                    <Twitter className="h-3 w-3 text-blue-400" />
-                    <span className="text-zinc-400">
-                      {article.influencers.length}
-                    </span>
-                  </div>
-                )}
-
-                {article.sourceTweets && article.sourceTweets.length > 0 && (
-                  <div className="flex items-center gap-1 text-xs border border-white/5 bg-black/20 backdrop-blur-md px-1.5 py-0.5 rounded-full">
-                    <MessageSquareText className="h-3 w-3 text-teal-400" />
-                    <span className="text-zinc-400">
-                      {article.sourceTweets.length}
-                    </span>
-                  </div>
-                )}
-
-                {article.coinData && article.coinData.length > 0 && (
-                  <div className="flex items-center gap-1 text-xs border border-white/5 bg-black/20 backdrop-blur-md px-1.5 py-0.5 rounded-full">
-                    <Coins className="h-3 w-3 text-amber-400" />
-                    <span className="text-zinc-400">
-                      {article.coinData.length}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Coin data and summary */}
-            <div className="flex-grow min-w-0 w-full md:w-auto">
-              <div className="hidden md:block">
-                <p className="text-xs text-zinc-400 line-clamp-2 mb-2">
-                  {article.summary ||
-                    (article.content
-                      ? article.content.substring(0, 120) + "..."
-                      : "No content available")}
-                </p>
+          <div className="relative z-10 p-3 md:p-4">
+            {/* Top section with calendar and title - now side by side on all screen sizes */}
+            <div className="flex items-start gap-3 mb-3">
+              {/* Calendar date display - visible on all screen sizes */}
+              <div className="flex-shrink-0 border border-white/10 bg-black/20 backdrop-blur-md rounded-lg overflow-hidden w-14 h-14 md:w-20 md:h-20 flex flex-col items-center justify-center group-hover:border-teal-500/30 transition-colors">
+                <span className="text-teal-400 text-[10px] md:text-xs font-medium">
+                  {dateFormatted.month}
+                </span>
+                <span className="text-zinc-100 text-lg md:text-3xl font-bold leading-none">
+                  {dateFormatted.day}
+                </span>
+                <span className="text-zinc-500 text-[10px] md:text-xs">
+                  {dateFormatted.year}
+                </span>
               </div>
 
-              {article.coinData && article.coinData.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {article.coinData.slice(0, 3).map((coin, index) => (
-                    <div
-                      key={index}
-                      className="border border-white/10 bg-black/20 backdrop-blur-md rounded-md px-2 py-1 text-xs flex items-center gap-1.5"
-                    >
-                      <span className="text-zinc-300 font-medium">
-                        {coin.symbol}
+              {/* Article title and stats */}
+              <div className="flex-grow min-w-0">
+                <div className="flex items-center gap-1 mb-1">
+                  <Sparkles className="h-3 w-3 text-teal-400" />
+                  <span className="text-xs text-zinc-500">Latest Analysis</span>
+                </div>
+                <h3 className="text-sm md:text-lg font-medium text-zinc-100 group-hover:text-teal-400 transition-colors line-clamp-2 mb-1">
+                  {article.title}
+                </h3>
+
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {article.influencers && article.influencers.length > 0 && (
+                    <div className="flex items-center gap-1 text-xs border border-white/5 bg-black/20 backdrop-blur-md px-1.5 py-0.5 rounded-full">
+                      <Twitter className="h-3 w-3 text-blue-400" />
+                      <span className="text-zinc-400">
+                        {article.influencers.length}
                       </span>
-                      {formatPriceChange(coin.priceChange24h)}
                     </div>
-                  ))}
-                  {article.coinData.length > 3 && (
-                    <div className="border border-white/10 bg-black/20 backdrop-blur-md rounded-md px-2 py-1 text-xs text-zinc-400">
-                      +{article.coinData.length - 3} more
+                  )}
+
+                  {article.sourceTweets && article.sourceTweets.length > 0 && (
+                    <div className="flex items-center gap-1 text-xs border border-white/5 bg-black/20 backdrop-blur-md px-1.5 py-0.5 rounded-full">
+                      <MessageSquareText className="h-3 w-3 text-teal-400" />
+                      <span className="text-zinc-400">
+                        {article.sourceTweets.length}
+                      </span>
+                    </div>
+                  )}
+
+                  {article.coinData && article.coinData.length > 0 && (
+                    <div className="flex items-center gap-1 text-xs border border-white/5 bg-black/20 backdrop-blur-md px-1.5 py-0.5 rounded-full">
+                      <Coins className="h-3 w-3 text-amber-400" />
+                      <span className="text-zinc-400">
+                        {article.coinData.length}
+                      </span>
                     </div>
                   )}
                 </div>
-              )}
+              </div>
             </div>
 
-            {/* Read more button */}
-            <div className="flex-shrink-0 self-end md:self-center ml-auto">
-              <div className="border border-white/10 bg-black/20 backdrop-blur-md rounded-full p-1.5 text-zinc-500 group-hover:text-teal-400 group-hover:border-teal-500/30 transition-all duration-300">
-                <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform duration-300" />
+            {/* Bottom section with content and action button */}
+            <div className="flex items-end justify-between mt-2">
+              {/* Coin data and summary */}
+              <div className="flex-grow min-w-0">
+                <div className="hidden md:block">
+                  <p className="text-xs text-zinc-400 line-clamp-2 mb-2">
+                    {article.summary ||
+                      (article.content
+                        ? article.content.substring(0, 120) + "..."
+                        : "No content available")}
+                  </p>
+                </div>
+
+                {article.coinData && article.coinData.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {article.coinData.slice(0, 3).map((coin, index) => (
+                      <div
+                        key={index}
+                        className="border border-white/10 bg-black/20 backdrop-blur-md rounded-md px-2 py-1 text-xs flex items-center gap-1.5"
+                      >
+                        <span className="text-zinc-300 font-medium">
+                          {coin.symbol}
+                        </span>
+                        {formatPriceChange(coin.priceChange24h)}
+                      </div>
+                    ))}
+                    {article.coinData.length > 3 && (
+                      <div className="border border-white/10 bg-black/20 backdrop-blur-md rounded-md px-2 py-1 text-xs text-zinc-400">
+                        +{article.coinData.length - 3} more
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Read more button */}
+              <div className="flex-shrink-0 ml-3">
+                <div className="border border-white/10 bg-black/20 backdrop-blur-md rounded-full p-1.5 text-zinc-500 group-hover:text-teal-400 group-hover:border-teal-500/30 transition-all duration-300">
+                  <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform duration-300" />
+                </div>
               </div>
             </div>
           </div>
@@ -306,20 +311,20 @@ export default function LatestArticle() {
 
         <div className="relative z-10 p-6 md:p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
           <div className="flex items-start gap-4">
-            {/* Calendar date */}
+            {/* Calendar date - now visible on all screen sizes */}
             <motion.div
-              className="hidden md:flex flex-shrink-0 border border-white/10 bg-black/20 backdrop-blur-md rounded-xl overflow-hidden w-20 h-20 flex-col items-center justify-center"
+              className="flex-shrink-0 border border-white/10 bg-black/20 backdrop-blur-md rounded-xl overflow-hidden w-16 h-16 md:w-20 md:h-20 flex flex-col items-center justify-center"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3 }}
             >
-              <span className="text-teal-400 text-xs font-medium">
+              <span className="text-teal-400 text-[10px] md:text-xs font-medium">
                 {dateFormatted.month}
               </span>
-              <span className="text-zinc-100 text-3xl font-bold leading-none">
+              <span className="text-zinc-100 text-xl md:text-3xl font-bold leading-none">
                 {dateFormatted.day}
               </span>
-              <span className="text-zinc-500 text-xs">
+              <span className="text-zinc-500 text-[10px] md:text-xs">
                 {dateFormatted.year}
               </span>
             </motion.div>
@@ -334,10 +339,6 @@ export default function LatestArticle() {
                 <Badge className="bg-teal-500/20 text-teal-400 border-teal-500/30 hover:bg-teal-500/30">
                   Market Analysis
                 </Badge>
-                <div className="flex items-center gap-1 text-xs text-zinc-500 md:hidden">
-                  <CalendarIcon className="h-3 w-3" />
-                  {dateFormatted.full}
-                </div>
               </motion.div>
 
               <motion.h2
