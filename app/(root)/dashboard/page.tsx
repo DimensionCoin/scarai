@@ -4,15 +4,17 @@ import Trending from '@/components/shared/Trending';
 import React from 'react'
 import SearchCoin from "@/components/shared/SearchCoin"
 import LatestArticle from '@/components/shared/LatestArticle';
+import PriceDisplay from '@/components/shared/PriceDisplay';
 
 const Dash = () => {
   return (
-    <div className='mb-8'>
-      <SearchCoin/>
-      <MarketCapWidget/>
-      <LatestArticle/>
-      <Trending  />
-      <TopCoins  />
+    <div className="mb-8">
+      <SearchCoin />
+      <PriceDisplay />
+      <Trending />
+      <LatestArticle />
+      <MarketCapWidget />
+      <TopCoins />
     </div>
   );
 }

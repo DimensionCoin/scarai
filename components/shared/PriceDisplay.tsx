@@ -1,0 +1,354 @@
+"use client";
+
+import type React from "react";
+
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
+import { coins } from "@/hooks/pyth/coin";
+import { usePythPrices } from "@/hooks/pyth/usePythPrice";
+import { Settings, X, Search, Check, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+// Helper function to format raw values to price format
+const formatPrice = (raw: string, expo: number) => {
+  const value = Number(raw) * Math.pow(10, expo);
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  });
+};
+
+const CryptoPriceHero: React.FC = () => {
+  // State for selected coins (default to first 3)
+  const [selectedCoinIds, setSelectedCoinIds] = useState<string[]>(() => {
+    // Try to load from localStorage, otherwise use first 3 coins
+    const saved =
+      typeof window !== "undefined"
+        ? localStorage.getItem("selectedCoinIds")
+        : null;
+    return saved ? JSON.parse(saved) : coins.slice(0, 3).map((coin) => coin.id);
+  });
+
+  // State for modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [tempSelectedIds, setTempSelectedIds] = useState<string[]>([]);
+
+  // Extract feed IDs from the selected coins
+  const feedIds = selectedCoinIds;
+  const { prices, error } = usePythPrices(feedIds);
+
+  // Initialize temp selection when modal opens
+  useEffect(() => {
+    if (isModalOpen) {
+      setTempSelectedIds([...selectedCoinIds]);
+      setSearchQuery("");
+    }
+  }, [isModalOpen, selectedCoinIds]);
+
+  // Save selected coins to localStorage when they change
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("selectedCoinIds", JSON.stringify(selectedCoinIds));
+    }
+  }, [selectedCoinIds]);
+
+  // Filter coins based on search query
+  const filteredCoins = coins.filter(
+    (coin) =>
+      coin.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      coin.symbol.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Toggle coin selection in the modal
+  const toggleCoinSelection = (coinId: string) => {
+    if (tempSelectedIds.includes(coinId)) {
+      setTempSelectedIds(tempSelectedIds.filter((id) => id !== coinId));
+    } else {
+      // Only allow selecting up to 3 coins
+      if (tempSelectedIds.length < 3) {
+        setTempSelectedIds([...tempSelectedIds, coinId]);
+      }
+    }
+  };
+
+  // Save selections and close modal
+  const saveSelections = () => {
+    setSelectedCoinIds(tempSelectedIds);
+    setIsModalOpen(false);
+  };
+
+  // Get the selected coin objects
+  const selectedCoins = coins.filter((coin) =>
+    selectedCoinIds.includes(coin.id)
+  );
+
+  return (
+    <>
+      <div className="relative w-full overflow-hidden rounded-xl border border-white/10 bg-black/20 backdrop-blur-xl shadow-lg mb-4">
+        {/* Subtle gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-r from-teal-500/5 via-transparent to-indigo-500/5"></div>
+
+        <div className="relative p-1.5 sm:p-4">
+          <div className="flex items-center justify-between mb-2 sm:mb-3">
+            <h2 className="text-xs sm:text-sm font-medium text-zinc-300">
+              Live Crypto Prices
+            </h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-teal-400"
+              onClick={() => setIsModalOpen(true)}
+            >
+              <Settings className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            </Button>
+          </div>
+
+          {/* Responsive grid for all screen sizes */}
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-3 max-w-4xl mx-auto">
+            {selectedCoins.map((coin) => {
+              // Normalize the feed ID for lookup
+              const normId = coin.id.startsWith("0x")
+                ? coin.id.slice(2).toLowerCase()
+                : coin.id.toLowerCase();
+              const priceData = prices[normId];
+
+              return (
+                <div
+                  key={coin.id}
+                  className="relative rounded-lg overflow-hidden aspect-[4/3] sm:aspect-[3/2] sm:max-h-[160px] md:max-h-[180px] border border-white/10 hover:border-white/20 transition-colors"
+                >
+                  {/* Background with coin image */}
+                  <div className="absolute inset-0 bg-black/40">
+                    {coin.image && (
+                      <div className="absolute inset-0 opacity-20">
+                        <Image
+                          src={
+                            coin.image ||
+                            "/placeholder.svg?height=100&width=100" ||
+                            "/placeholder.svg"
+                          }
+                          alt=""
+                          fill
+                          className="object-cover blur-[1px]"
+                          unoptimized
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/20 to-transparent"></div>
+
+                  {/* Content */}
+                  <div className="relative h-full flex flex-col justify-between p-2 sm:p-3">
+                    <div className="flex justify-between items-start">
+                      <div className="bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-medium text-zinc-300">
+                        {coin.symbol.toUpperCase()}
+                      </div>
+                      <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                        {coin.image ? (
+                          <Image
+                            src={
+                              coin.image ||
+                              "/placeholder.svg?height=20&width=20" ||
+                              "/placeholder.svg"
+                            }
+                            alt={coin.name}
+                            width={16}
+                            height={16}
+                            className="object-cover"
+                            unoptimized
+                          />
+                        ) : (
+                          <div className="h-5 w-5 rounded-full bg-gradient-to-br from-teal-400 to-indigo-500 flex items-center justify-center text-white font-bold text-[8px]">
+                            {coin.symbol.substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-auto">
+                      <h3 className="text-xs sm:text-sm font-medium text-white truncate">
+                        {coin.name}
+                      </h3>
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-1">
+                        <p className="text-xs sm:text-sm font-semibold text-white">
+                          {priceData ? (
+                            `$${formatPrice(priceData.price, priceData.expo)}`
+                          ) : (
+                            <span className="flex items-center">
+                              <Loader2 className="h-2.5 w-2.5 mr-1 animate-spin" />
+                              <span className="truncate">Loading</span>
+                            </span>
+                          )}
+                        </p>
+
+                        {priceData && (
+                          <span className="text-[8px] sm:text-[10px] text-zinc-400 mt-0.5 sm:mt-0">
+                            <span className="mr-0.5">±</span>
+                            {formatPrice(priceData.conf, priceData.expo)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {error && (
+            <div className="mt-2 text-xs text-red-400 bg-red-500/10 p-2 rounded-lg">
+              Error fetching prices: {error.message}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Coin Selection Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="relative w-full max-w-md rounded-xl border border-white/15 bg-black/80 backdrop-blur-xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-4 border-b border-white/10">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base sm:text-lg font-medium text-white">
+                    Select Cryptocurrencies
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white"
+                    onClick={() => setIsModalOpen(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Choose up to 3 cryptocurrencies to display
+                </p>
+
+                {/* Search input */}
+                <div className="mt-3 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Search className="h-4 w-4 text-zinc-500" />
+                  </div>
+                  <Input
+                    type="text"
+                    placeholder="Search by name or symbol..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 bg-black/30 border-white/10 text-zinc-200 placeholder-zinc-500 focus-visible:ring-teal-500/30"
+                  />
+                </div>
+
+                <div className="mt-2 text-xs text-zinc-500">
+                  Selected:{" "}
+                  <span className="text-teal-400 font-medium">
+                    {tempSelectedIds.length}/3
+                  </span>
+                </div>
+              </div>
+
+              {/* Coin list */}
+              <div className="max-h-[300px] overflow-y-auto p-2">
+                {filteredCoins.length === 0 ? (
+                  <div className="text-center py-8 text-zinc-500">
+                    No cryptocurrencies found matching &quot;{searchQuery}&quot;
+                  </div>
+                ) : (
+                  filteredCoins.map((coin) => {
+                    const isSelected = tempSelectedIds.includes(coin.id);
+                    return (
+                      <div
+                        key={coin.id}
+                        onClick={() => toggleCoinSelection(coin.id)}
+                        className={`flex items-center p-3 rounded-lg mb-1 cursor-pointer transition-colors ${
+                          isSelected
+                            ? "bg-teal-500/10 border border-teal-500/30"
+                            : "bg-white/5 border border-white/10 hover:bg-white/10"
+                        }`}
+                      >
+                        <div className="h-8 w-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center overflow-hidden mr-3">
+                          {coin.image ? (
+                            <Image
+                              src={
+                                coin.image ||
+                                "/placeholder.svg?height=20&width=20" ||
+                                "/placeholder.svg"
+                              }
+                              alt={coin.name}
+                              width={20}
+                              height={20}
+                              className="object-contain"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="h-5 w-5 rounded-full bg-gradient-to-br from-teal-400 to-indigo-500 flex items-center justify-center text-white font-bold text-[8px]">
+                              {coin.symbol.substring(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-zinc-200 truncate">
+                              {coin.name}
+                            </p>
+                            <span className="text-xs text-zinc-500 ml-1">
+                              {coin.symbol}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`ml-2 h-5 w-5 rounded-full flex items-center justify-center ${
+                            isSelected
+                              ? "bg-teal-500 text-white"
+                              : "bg-white/10 text-transparent"
+                          }`}
+                        >
+                          <Check className="h-3 w-3" />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="p-4 border-t border-white/10 flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsModalOpen(false)}
+                  className="border-white/10 text-zinc-300 hover:bg-white/10 hover:text-white"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={saveSelections}
+                  disabled={tempSelectedIds.length === 0}
+                  className="bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 text-white border-0"
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
+
+export default CryptoPriceHero;

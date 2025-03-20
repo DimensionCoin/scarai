@@ -27,7 +27,7 @@ export default function LoadingScreen() {
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-zinc-950 z-50 flex items-center justify-center overflow-hidden">
+    <div className="fixed inset-0 bg-zinc-950/20 z-50 flex items-center justify-center overflow-hidden">
       {/* Background subtle gradient */}
       <div className="absolute inset-0 bg-gradient-radial from-zinc-900 to-zinc-950 opacity-80"></div>
 
