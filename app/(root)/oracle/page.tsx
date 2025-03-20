@@ -461,7 +461,7 @@ export default function ChatPage() {
           {showCoinDropdown && (
             <div
               ref={dropdownRef}
-              className="absolute bottom-full mb-1 left-0 w-full overflow-hidden rounded-lg border border-white/15 bg-black/30 backdrop-blur-xl shadow-lg z-20"
+              className="absolute bottom-full mb-2 left-0 w-full overflow-hidden rounded-lg border border-white/15 bg-black/70 backdrop-blur-xl shadow-lg z-20"
             >
               <div className="p-2 border-b border-white/10 flex items-center gap-2">
                 <Search className="h-3.5 w-3.5 text-teal-400" />

@@ -10,6 +10,7 @@ import { Settings, X, Search, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@clerk/nextjs";
+import Link from "next/link";
 
 // Helper function to format raw values to price format
 const formatPrice = (raw: string, expo: number) => {
@@ -140,72 +141,77 @@ const CryptoPriceHero: React.FC = () => {
                   : coin.id.toLowerCase();
                 const priceData = prices[normId];
                 return (
-                  <div
-                    key={coin.id}
-                    className="relative rounded-lg overflow-hidden aspect-[4/3] sm:aspect-[3/2] sm:max-h-[160px] md:max-h-[180px] border border-white/10 hover:border-white/20 transition-colors"
-                  >
-                    {/* Background */}
-                    <div className="absolute inset-0 bg-black/40">
-                      {coin.image && (
-                        <div className="absolute inset-0 opacity-20">
-                          <Image
-                            src={coin.image || "/placeholder.svg"}
-                            alt={coin.name}
-                            fill
-                            className="object-cover blur-[1px]"
-                            unoptimized
-                          />
-                        </div>
-                      )}
-                    </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/20 to-transparent"></div>
-                    {/* Content */}
-                    <div className="relative h-full flex flex-col justify-between p-2 sm:p-3">
-                      <div className="flex justify-between items-start">
-                        <div className="bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-medium text-zinc-300">
-                          {coin.symbol.toUpperCase()}
-                        </div>
-                        <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                          {coin.image ? (
+                  <Link href={`/coin/${coin.name.toLowerCase()}`}>
+                    <div
+                      key={coin.id}
+                      className="relative rounded-lg overflow-hidden aspect-[4/3] sm:aspect-[3/2] sm:max-h-[160px] md:max-h-[180px] border border-white/10 hover:border-white/20 transition-colors"
+                    >
+                      {/* Background */}
+                      <div className="absolute inset-0 bg-black/40">
+                        {coin.image && (
+                          <div className="absolute inset-0 opacity-20">
                             <Image
                               src={coin.image || "/placeholder.svg"}
                               alt={coin.name}
-                              width={16}
-                              height={16}
-                              className="object-cover"
+                              fill
+                              className="object-cover blur-[1px]"
                               unoptimized
                             />
-                          ) : (
-                            <div className="h-5 w-5 rounded-full bg-gradient-to-br from-teal-400 to-indigo-500 flex items-center justify-center text-white font-bold text-[8px]">
-                              {coin.symbol.substring(0, 2).toUpperCase()}
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="mt-auto">
-                        <h3 className="text-xs sm:text-sm font-medium text-white truncate">
-                          {coin.name}
-                        </h3>
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-1">
-                          <p className="text-xs sm:text-sm font-semibold text-white">
-                            {priceData ? (
-                              `$${formatPrice(priceData.price, priceData.expo)}`
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/20 to-transparent"></div>
+                      {/* Content */}
+                      <div className="relative h-full flex flex-col justify-between p-2 sm:p-3">
+                        <div className="flex justify-between items-start">
+                          <div className="bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded text-[10px] font-medium text-zinc-300">
+                            {coin.symbol.toUpperCase()}
+                          </div>
+                          <div className="h-5 w-5 sm:h-6 sm:w-6 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+                            {coin.image ? (
+                              <Image
+                                src={coin.image || "/placeholder.svg"}
+                                alt={coin.name}
+                                width={16}
+                                height={16}
+                                className="object-cover"
+                                unoptimized
+                              />
                             ) : (
-                              <span className="flex items-center">
-                                <Loader2 className="h-2.5 w-2.5 mr-1 animate-spin" />
-                                <span className="truncate">Loading</span>
+                              <div className="h-5 w-5 rounded-full bg-gradient-to-br from-teal-400 to-indigo-500 flex items-center justify-center text-white font-bold text-[8px]">
+                                {coin.symbol.substring(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-auto">
+                          <h3 className="text-xs sm:text-sm font-medium text-white truncate">
+                            {coin.name}
+                          </h3>
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-1">
+                            <p className="text-xs sm:text-sm font-semibold text-white">
+                              {priceData ? (
+                                `$${formatPrice(
+                                  priceData.price,
+                                  priceData.expo
+                                )}`
+                              ) : (
+                                <span className="flex items-center">
+                                  <Loader2 className="h-2.5 w-2.5 mr-1 animate-spin" />
+                                  <span className="truncate">Loading</span>
+                                </span>
+                              )}
+                            </p>
+                            {priceData && (
+                              <span className="text-[8px] sm:text-[10px] text-zinc-400 mt-0.5 sm:mt-0">
+                                ± {formatPrice(priceData.conf, priceData.expo)}
                               </span>
                             )}
-                          </p>
-                          {priceData && (
-                            <span className="text-[8px] sm:text-[10px] text-zinc-400 mt-0.5 sm:mt-0">
-                              ± {formatPrice(priceData.conf, priceData.expo)}
-                            </span>
-                          )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
