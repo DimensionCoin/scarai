@@ -119,3 +119,49 @@ export async function hasEnoughCredits(
     throw new Error("Error checking credits");
   }
 }
+
+/**
+ * Fetch a user's top 3 selected coins.
+ */
+export async function getUserTopCoins(userId: string) {
+  try {
+    await connect();
+    const user = await User.findOne({ clerkId: userId });
+    if (user && !user.topCoins) {
+      // If topCoins doesn't exist, update the user to add it.
+      user.topCoins = [];
+      await user.save();
+    }
+    return user?.topCoins || [];
+  } catch (error) {
+    console.error("Error fetching user's top coins:", error);
+    throw new Error("Error fetching user's top coins");
+  }
+}
+
+/**
+ * Update a user's top 3 selected coins.
+ */
+export async function updateUserTopCoins(userId: string, topCoins: string[]) {
+  try {
+    if (topCoins.length > 3) {
+      throw new Error("Only 3 coins can be selected");
+    }
+
+    await connect();
+    const user = await User.findOneAndUpdate(
+      { clerkId: userId },
+      { topCoins },
+      { new: true }
+    );
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    return user.topCoins;
+  } catch (error) {
+    console.error("Error updating user's top coins:", error);
+    throw new Error("Error updating user's top coins");
+  }
+}

@@ -13,7 +13,8 @@ const UserSchema = new Schema(
       default: "free",
     },
     customerId: { type: String, default: "" },
-    credits: { type: Number, required: true, default: 20 }, 
+    credits: { type: Number, required: true, default: 20 },
+    topCoins: { type: [String], default: [] }, // Store the top 3 coin IDs
   },
   { timestamps: true }
 );
@@ -21,4 +22,3 @@ const UserSchema = new Schema(
 const User = models?.User || model("User", UserSchema);
 
 export default User;
-
