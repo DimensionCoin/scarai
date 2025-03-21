@@ -117,10 +117,16 @@ ${fullHistory}
       .replace(/\n/g, "")
       .trim();
 
-    // Ensure valid JSON quotes
-    if (!cleaned.startsWith("{")) {
-      throw new Error("Invalid format returned by Grok");
+    // Early check for clearly invalid strings
+    if (!cleaned.startsWith("{") || !cleaned.includes("intent")) {
+      console.error("❌ Grok returned non-JSON or incomplete data:", cleaned);
+      return {
+        intent: "unknown",
+        entities: { coins: [], users: [] },
+        context: "Grok returned invalid format — please try again.",
+      };
     }
+
     function coerceToValidJSON(input: string): string {
       return input
         .replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":') // keys
