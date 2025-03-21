@@ -11,40 +11,87 @@ function extractEntities(message: string) {
   };
 }
 
+function getLastUserMessage(chatHistory: ChatMessage[]) {
+  return (
+    [...chatHistory].reverse().find((m) => m.role === "user")?.content || ""
+  );
+}
+
 export async function usePromptParser(
   message: string,
   chatHistory: ChatMessage[] = []
-) {
-  const { coins, users } = extractEntities(message);
+): Promise<{
+  intent: string;
+  entities: { coins: string[]; users: string[] };
+  context: string;
+}> {
   const client = new OpenAI({
     apiKey: process.env.GROK_API_KEY!,
     baseURL: "https://api.x.ai/v1",
   });
 
-  const lastMessages =
+  const { coins, users } = extractEntities(message);
+  const lastUserMsg = getLastUserMessage(chatHistory);
+  const fullHistory =
     chatHistory
       .slice(-2)
       .map((m) => `${m.role}: ${m.content}`)
       .join("\n") || "No prior context";
 
+  // Pre-resolve vague follow-ups like "he did", "what about it"
+  if (
+    /he|she|they|it|that|what about/i.test(message) &&
+    (lastUserMsg.includes("/") || lastUserMsg.includes("@"))
+  ) {
+    const previousEntities = extractEntities(lastUserMsg);
+    const fallbackIntent = previousEntities.users.length
+      ? "x_posts"
+      : previousEntities.coins.length
+      ? "coin_data"
+      : "unknown";
+
+    return {
+      intent: fallbackIntent,
+      entities: {
+        coins: [...new Set([...coins, ...previousEntities.coins])],
+        users: [...new Set([...users, ...previousEntities.users])],
+      },
+      context: `Continuing conversation about ${
+        previousEntities.coins[0] ||
+        previousEntities.users[0] ||
+        "unknown topic"
+      }`,
+    };
+  }
+
   const systemPrompt = `
-You are a prompt parser for a crypto trading assistant. Analyze the message and context, returning ONLY a valid JSON string with:
-- intent: "coin_data" | "trading_advice" | "investment_advice" | "x_posts" | "compare" | "mixed" | "explain_concept" | "unknown"
-- entities: { coins: ["/coin1", "/coin2"], users: ["@user1"] }
-- context: A short sentence describing what the user wants.
+You are a crypto AI prompt parser. Given a user message and recent context, return ONLY a valid JSON string with:
+- intent: one of: "coin_data", "trading_advice", "investment_advice", "x_posts", "compare", "mixed", "explain_concept", "unknown"
+- entities: { coins: ["/coin1"], users: ["@user1"] }
+- context: a short, clear summary of what the user wants
 
-**Rules:**
-- "what is /coin", "explain /coin", "tell me about /coin" → intent: "explain_concept"
-- "/[coin]" alone → intent: "coin_data"
-- "@[user]" alone → intent: "x_posts"
-- "should I buy /[coin]", "hold /[coin]" → intent: "investment_advice"
-- "entry for /[coin]", "levels /[coin]" → intent: "trading_advice"
-- "/coin1 vs /coin2" → intent: "compare"
+### Rules:
+- "what is /coin", "tell me about /coin", "explain /coin" → intent: "explain_concept"
+- "/coin" alone → intent: "coin_data"
+- "should I buy /coin", "hold /coin", "good long term" → intent: "investment_advice"
+- "entry", "levels", "target" with /coin → intent: "trading_advice"
+- "@user" alone → intent: "x_posts"
+- "/coin vs /coin2", "@user1 vs @user2" → intent: "compare"
 - "/coin @user" → intent: "mixed"
-- If unclear, use context from last message or return "unknown"
+- If vague or refers to a previous message (e.g. "he did", "what about it"), use recent context to resolve
 
-**Message:** "${message}"
-**Last 2 Messages:** "${lastMessages}"
+### Input:
+Message: "${message}"
+Last messages:
+${fullHistory}
+
+Return ONLY this format:
+
+{
+  "intent": "...",
+  "entities": { "coins": [...], "users": [...] },
+  "context": "..."
+}
 `;
 
   try {
@@ -63,10 +110,31 @@ You are a prompt parser for a crypto trading assistant. Analyze the message and 
       .trim();
 
     const parsed = JSON.parse(cleaned);
+
+    const parsedCoins =
+      Array.isArray(parsed?.entities?.coins) &&
+      (parsed.entities.coins as unknown[]).every(
+        (v): v is string => typeof v === "string"
+      )
+        ? (parsed.entities.coins as string[]).map((c) => c.toLowerCase())
+        : coins;
+
+    const parsedUsers =
+      Array.isArray(parsed?.entities?.users) &&
+      (parsed.entities.users as unknown[]).every(
+        (v): v is string => typeof v === "string"
+      )
+        ? (parsed.entities.users as string[]).map((u) => u.toLowerCase())
+        : users;
+
     return {
-      intent: parsed.intent || "unknown",
-      entities: { coins, users },
-      context: parsed.context || "unclear",
+      intent: typeof parsed.intent === "string" ? parsed.intent : "unknown",
+      entities: {
+        coins: [...new Set(parsedCoins)],
+        users: [...new Set(parsedUsers)],
+      },
+      context:
+        typeof parsed.context === "string" ? parsed.context : "unclear request",
     };
   } catch (error) {
     console.error("PromptParser Error:", error);
