@@ -121,8 +121,28 @@ ${fullHistory}
     if (!cleaned.startsWith("{")) {
       throw new Error("Invalid format returned by Grok");
     }
+    function coerceToValidJSON(input: string): string {
+      return input
+        .replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":') // keys
+        .replace(/:\s*'([^']*)'/g, ': "$1"') // single-quoted values
+        .replace(/:\s*([^,"{}\[\]\s]+)/g, ': "$1"'); // unquoted values
+    }
 
-    const parsed = JSON.parse(cleaned);
+    let parsed;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      try {
+        parsed = JSON.parse(coerceToValidJSON(cleaned));
+      } catch (e) {
+        console.error("Failed to parse prompt:", cleaned);
+        return {
+          intent: "unknown",
+          entities: { coins: [], users: [] },
+          context: "Invalid parser format — please try again.",
+        };
+      }
+    }
 
     const parsedCoins =
       Array.isArray(parsed?.entities?.coins) &&
