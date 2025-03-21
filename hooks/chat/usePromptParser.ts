@@ -39,9 +39,15 @@ export async function usePromptParser(
       .join("\n") || "No prior context";
 
   // Pre-resolve vague follow-ups like "he did", "what about it"
+  const isFollowUp = /^(he|she|they|it|that|what about|what is it|okay)$/i.test(
+    message.trim()
+  );
+
   if (
-    /he|she|they|it|that|what about/i.test(message) &&
-    (lastUserMsg.includes("/") || lastUserMsg.includes("@"))
+    isFollowUp &&
+    (lastUserMsg.includes("/") || lastUserMsg.includes("@")) &&
+    coins.length === 0 &&
+    users.length === 0
   ) {
     const previousEntities = extractEntities(lastUserMsg);
     const fallbackIntent = previousEntities.users.length
@@ -104,10 +110,14 @@ Return ONLY this format:
 
     const raw = completion.choices[0]?.message?.content || "{}";
     const cleaned = raw
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
+      .replace(/```json|```/g, "")
       .replace(/\n/g, "")
       .trim();
+
+    // Ensure valid JSON quotes
+    if (!cleaned.startsWith("{")) {
+      throw new Error("Invalid format returned by Grok");
+    }
 
     const parsed = JSON.parse(cleaned);
 
