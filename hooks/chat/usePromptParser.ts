@@ -91,12 +91,15 @@ Message: "${message}"
 Last messages:
 ${fullHistory}
 
-Return ONLY this format:
+⚠️ Return only valid JSON (NO double quotes, NO markdown, NO single quotes). Do not include JS-style formatting or explanation. Example:
 
 {
-  "intent": "...",
-  "entities": { "coins": [...], "users": [...] },
-  "context": "..."
+  "intent": "coin_data",
+  "entities": {
+    "coins": ["/solana"],
+    "users": []
+  },
+  "context": "User wants data on Solana"
 }
 `;
 
