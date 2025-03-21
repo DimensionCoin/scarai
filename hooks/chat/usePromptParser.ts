@@ -91,7 +91,7 @@ Message: "${message}"
 Last messages:
 ${fullHistory}
 
-⚠️ Return only valid JSON (NO double quotes, NO markdown, NO single quotes). Do not include JS-style formatting or explanation. Example:
+⚠️ Return only valid JSON (with double quotes). Do NOT include markdown, single quotes, or JS-style formatting.
 
 {
   "intent": "coin_data",
@@ -101,6 +101,14 @@ ${fullHistory}
   },
   "context": "User wants data on Solana"
 }
+
+IMPORTANT: If you cannot parse the request, still return a valid JSON object with:
+{
+  "intent": "unknown",
+  "entities": { "coins": [], "users": [] },
+  "context": "Unclear request"
+}
+
 `;
 
   try {
