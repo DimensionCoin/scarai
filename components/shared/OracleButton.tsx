@@ -42,7 +42,8 @@ export default function OracleButton({ children }: OracleButtonProps) {
   const [coinResults, setcoinResults] = useState<Cryptocurrency[]>([]);
   const [coinSearchLoading, setCoinSearchLoading] = useState(false);
   const [cursorPosition, setCursorPosition] = useState(0);
-  const [dollarSignIndex, setDollarSignIndex] = useState(-1);
+  // Change the variable name from dollarSignIndex to slashIndex for clarity
+  const [slashIndex, setSlashIndex] = useState(-1);
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -194,6 +195,7 @@ export default function OracleButton({ children }: OracleButtonProps) {
     }
   };
 
+  // In the handleInputChange function, replace the $ symbol check with / symbol check
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setInput(newValue);
@@ -202,27 +204,27 @@ export default function OracleButton({ children }: OracleButtonProps) {
     const cursorPos = e.target.selectionStart || 0;
     setCursorPosition(cursorPos);
 
-    // Check if the user just typed a $ character
-    const lastDollarIndex = newValue.lastIndexOf("$", cursorPos);
+    // Check if the user just typed a / character
+    const lastSlashIndex = newValue.lastIndexOf("/", cursorPos);
 
     if (
-      lastDollarIndex !== -1 &&
-      (lastDollarIndex === 0 || newValue[lastDollarIndex - 1] === " ")
+      lastSlashIndex !== -1 &&
+      (lastSlashIndex === 0 || newValue[lastSlashIndex - 1] === " ")
     ) {
-      // Extract the partial coin name after the $ symbol
-      const partialCoin = newValue.substring(lastDollarIndex + 1, cursorPos);
+      // Extract the partial coin name after the / symbol
+      const partialCoin = newValue.substring(lastSlashIndex + 1, cursorPos);
 
       // Check if there's a space after the partial coin name
       const hasSpaceAfter = partialCoin.includes(" ");
 
-      // Only show dropdown and search if we have a $ followed by some text without a space
+      // Only show dropdown and search if we have a / followed by some text without a space
       if (partialCoin !== "" && !hasSpaceAfter) {
-        setDollarSignIndex(lastDollarIndex);
+        setSlashIndex(lastSlashIndex);
         setCoinSearchQuery(partialCoin);
         setShowCoinDropdown(true);
-      } else if (lastDollarIndex === cursorPos - 1) {
-        // Just the $ was typed, show all coins
-        setDollarSignIndex(lastDollarIndex);
+      } else if (lastSlashIndex === cursorPos - 1) {
+        // Just the / was typed, show all coins
+        setSlashIndex(lastSlashIndex);
         setCoinSearchQuery("");
         setShowCoinDropdown(true);
       } else {
@@ -233,24 +235,25 @@ export default function OracleButton({ children }: OracleButtonProps) {
     }
   };
 
+  // Update the handleCoinSelect function to keep the / and add a space after the coin ID
   const handleCoinSelect = (coinId: string) => {
     // Find the selected coin
     const selectedCoin = coinResults.find((coin) => coin.id === coinId);
     if (!selectedCoin) return;
 
     // Replace the partial coin name with the full coin id
-    if (dollarSignIndex !== -1) {
-      const beforeDollar = input.substring(0, dollarSignIndex);
+    if (slashIndex !== -1) {
+      const beforeSlash = input.substring(0, slashIndex);
       const afterPartialCoin = input.substring(cursorPosition);
 
-      // Set the new input value with the selected coin
-      const newInput = `${beforeDollar}$${selectedCoin.id}${afterPartialCoin}`;
+      // Set the new input value with the selected coin, keeping the / and adding a space
+      const newInput = `${beforeSlash}/${selectedCoin.id} ${afterPartialCoin}`;
       setInput(newInput);
 
-      // Set cursor position after the inserted coin name
+      // Set cursor position after the inserted coin name and the space
       setTimeout(() => {
         if (inputRef.current) {
-          const newPosition = dollarSignIndex + selectedCoin.id.length + 1; // +1 for the $ sign
+          const newPosition = slashIndex + selectedCoin.id.length + 2; // +1 for the / sign and +1 for the space
           inputRef.current.setSelectionRange(newPosition, newPosition);
           inputRef.current.focus();
         }
@@ -422,6 +425,33 @@ export default function OracleButton({ children }: OracleButtonProps) {
                             </div>
                           </div>
                         ))
+                      )}
+                      {/* Loading indicator */}
+                      {loading && (
+                        <div className="mb-4 flex justify-start">
+                          <div className="max-w-[85%] sm:max-w-[80%] bg-white/10 text-zinc-100 border border-white/10 rounded-2xl px-4 py-3 shadow-lg">
+                            <div className="flex items-center space-x-2">
+                              <div
+                                className="h-2 w-2 bg-teal-400 rounded-full animate-bounce"
+                                style={{ animationDelay: "0ms" }}
+                              ></div>
+                              <div
+                                className="h-2 w-2 bg-teal-400 rounded-full animate-bounce"
+                                style={{ animationDelay: "150ms" }}
+                              ></div>
+                              <div
+                                className="h-2 w-2 bg-teal-400 rounded-full animate-bounce"
+                                style={{ animationDelay: "300ms" }}
+                              ></div>
+                            </div>
+                            <span className="block text-xs opacity-60 mt-2">
+                              {new Date().toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                        </div>
                       )}
                       <div ref={messagesEndRef} />
                     </div>

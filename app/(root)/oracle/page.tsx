@@ -34,9 +34,9 @@ interface Cryptocurrency {
 
 // Example queries that will be randomly selected - shorter for mobile
 const exampleQueries = [
-  "Current /BTC price trend?",
+  "Current /bitcoin price trend?",
   "How do interest rates affect crypto?",
-  "Compare /BTC and /ETH investments",
+  "Compare /bitcoin and /ethereum investments",
   "Top 5 altcoins to watch",
   "Explain DeFi simply",
   "How does blockchain work?",
@@ -45,7 +45,7 @@ const exampleQueries = [
   "Proof of work vs proof of stake?",
   "How to evaluate crypto projects?",
   "Crypto investing risks?",
-  "How is /SOL performing today",
+  "How is /solana performing today",
   "has @ansem said anything about meme coins",
 ];
 
