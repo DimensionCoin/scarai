@@ -72,7 +72,7 @@ export async function usePromptParser(
 
   const systemPrompt = `
 You are a crypto AI prompt parser. Given a user message and recent context, return ONLY a valid JSON string with:
-- intent: one of: "coin_data", "trading_advice", "investment_advice", "x_posts", "compare", "mixed", "explain_concept", "unknown"
+- intent: one of: "coin_data", "trading_advice", "investment_advice", "x_posts", "compare", "mixed", "explain_concept", "market_trends", "top_coin_data", "unknown"
 - entities: { coins: ["/coin1"], users: ["@user1"] }
 - context: a short, clear summary of what the user wants
 
@@ -85,6 +85,8 @@ You are a crypto AI prompt parser. Given a user message and recent context, retu
 - "/coin vs /coin2", "@user1 vs @user2" → intent: "compare"
 - "/coin @user" → intent: "mixed"
 - If vague or refers to a previous message (e.g. "he did", "what about it"), use recent context to resolve
+- If user says "how is the market", "risk on/off", "interest rates", "yields", "liquidity", or "macro" → intent: "market_trends"
+- "what are the top coins", "top cryptos", "top tokens", "most valuable coins" → intent: "top_coin_data"
 
 ### Input:
 Message: "${message}"

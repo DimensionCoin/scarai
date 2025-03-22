@@ -39,7 +39,6 @@ const CryptoSchema: Schema<ICrypto> = new Schema(
     market_cap: { type: Number, required: true },
     total_volume: { type: Number, required: true },
     price_change_percentage_24h: { type: Number, required: true },
-    price_change_percentage_7d: { type: Number, required: false },
     image: { type: String, required: true },
   },
   { timestamps: true }
