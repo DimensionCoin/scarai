@@ -10,7 +10,6 @@ import { useMarketSnapshot } from "@/hooks/chat/useMarketSnapshot";
 import { useSystemPrompt } from "@/hooks/chat/useSystemPrompt";
 import { useTopCryptoData } from "@/hooks/chat/useTopCryptoData";
 import { matchCategoryFromQuery } from "@/utils/matchCategory";
-import { COIN_CATEGORIES } from "@/utils/coinCategories";
 
 // ✅ Utility to fetch category coins dynamically
 async function fetchCategoryCoins(categoryId: string, count: number = 10) {
@@ -101,7 +100,7 @@ export async function processChatRequest({
         )}\nCoin Data: ${JSON.stringify(coinData)}`,
       },
     ],
-    max_tokens: 1000,
+    max_tokens: 800,
     temperature: 0.2,
   });
 

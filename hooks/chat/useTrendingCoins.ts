@@ -7,10 +7,16 @@ export async function useTrendingCoins() {
     .sort({ market_cap_rank: 1 })
     .limit(10)
     .lean(); // Lean for plain JS objects
-  return trending.map((coin) => ({
-    id: coin.coin_id, // Use coin_id (e.g., "koma-inu") instead of _id
-    name: coin.name, // "Koma Inu"
-    marketCapRank: coin.market_cap_rank, // 983
-    symbol: coin.symbol, // "KOMA"
-  }));
+ return trending.map((coin) => ({
+   id: coin.coin_id,
+   name: coin.name,
+   marketCapRank: coin.market_cap_rank,
+   symbol: coin.symbol,
+   market_data: {
+     price: coin.market_data?.price,
+     price_change_percentage_24h: coin.market_data?.price_change_percentage_24h,
+     total_volume: coin.market_data?.total_volume,
+   },
+ }));
+
 }

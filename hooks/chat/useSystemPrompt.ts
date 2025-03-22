@@ -128,7 +128,7 @@ You are Scar Ai, a crypto trading and investing assistant built by xAI. Interpre
 
 ### Top Coins Snapshot:
 ${topCoins
-  ?.slice(0, 5)
+  ?.slice(0, 19)
   .map(
     (c, i) =>
       `${i + 1}. ${c.name} ($${c.current_price}, ${
