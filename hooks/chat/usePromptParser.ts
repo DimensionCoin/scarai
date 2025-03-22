@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { ChatMessage } from "@/types/chat";
+import { matchCategoryFromQuery } from "@/utils/matchCategory";
 
 function extractEntities(message: string) {
   const coins = message.match(/\/[a-zA-Z0-9-]+/g) || [];
@@ -22,7 +23,12 @@ export async function usePromptParser(
   chatHistory: ChatMessage[] = []
 ): Promise<{
   intent: string;
-  entities: { coins: string[]; users: string[] };
+  entities: {
+    coins: string[];
+    users: string[];
+    category?: string;
+    count?: number; 
+  };
   context: string;
 }> {
   const client = new OpenAI({
@@ -38,11 +44,49 @@ export async function usePromptParser(
       .map((m) => `${m.role}: ${m.content}`)
       .join("\n") || "No prior context";
 
-  // Pre-resolve vague follow-ups like "he did", "what about it"
   const isFollowUp = /^(he|she|they|it|that|what about|what is it|okay)$/i.test(
     message.trim()
   );
 
+  // ✅ Extract count (e.g., "top 25 gaming coins")
+  const amountMatch = message.match(/top\s+(\d{1,3})/i);
+  const count = amountMatch ? parseInt(amountMatch[1], 10) : undefined;
+
+  // ✅ Handle category queries
+  const matchedCategory = matchCategoryFromQuery(message);
+  if (matchedCategory) {
+    return {
+      intent: "category_coins",
+      entities: {
+        coins,
+        users,
+        category: matchedCategory.category_id,
+        ...(count ? { count } : {}),
+      },
+      context: `User is asking about top ${count ?? 10} coins in the ${
+        matchedCategory.name
+      } category`,
+    };
+  }
+
+  // ✅ Fallback for "top coins" generally
+  if (/top (coins|tokens|cryptos)/i.test(message)) {
+    return {
+      intent: "top_coin_data",
+      entities: { coins, users, ...(count ? { count } : {}) },
+      context: `User is asking for the top ${count ?? 10} coins by market cap`,
+    };
+  }
+  // ✅ Fallback for "top coins" when no category is specified
+  if (/top (coins|tokens|cryptos)/i.test(message)) {
+    return {
+      intent: "top_coin_data",
+      entities: { coins, users },
+      context: "User is asking for the top coins by market cap",
+    };
+  }
+
+  // ✅ Handle follow-up messages
   if (
     isFollowUp &&
     (lastUserMsg.includes("/") || lastUserMsg.includes("@")) &&
@@ -70,47 +114,31 @@ export async function usePromptParser(
     };
   }
 
+  // 🔮 GPT fallback parser
   const systemPrompt = `
 You are a crypto AI prompt parser. Given a user message and recent context, return ONLY a valid JSON string with:
-- intent: one of: "coin_data", "trading_advice", "investment_advice", "x_posts", "compare", "mixed", "explain_concept", "market_trends", "top_coin_data", "unknown"
-- entities: { coins: ["/coin1"], users: ["@user1"] }
+- intent: one of: "coin_data", "trading_advice", "investment_advice", "x_posts", "compare", "mixed", "explain_concept", "market_trends", "top_coin_data", "category_coins", "unknown"
+- entities: { coins: ["/coin1"], users: ["@user1"], category?: "category_id" }
 - context: a short, clear summary of what the user wants
 
 ### Rules:
-- "what is /coin", "tell me about /coin", "explain /coin" → intent: "explain_concept"
 - "/coin" alone → intent: "coin_data"
-- "should I buy /coin", "hold /coin", "good long term" → intent: "investment_advice"
-- "entry", "levels", "target" with /coin → intent: "trading_advice"
+- "what is /coin" → intent: "explain_concept"
+- "should I buy /coin", "hold /coin" → intent: "investment_advice"
+- "entry", "levels", "target" → intent: "trading_advice"
 - "@user" alone → intent: "x_posts"
 - "/coin vs /coin2", "@user1 vs @user2" → intent: "compare"
 - "/coin @user" → intent: "mixed"
-- If vague or refers to a previous message (e.g. "he did", "what about it"), use recent context to resolve
-- If user says "how is the market", "risk on/off", "interest rates", "yields", "liquidity", or "macro" → intent: "market_trends"
-- "what are the top coins", "top cryptos", "top tokens", "most valuable coins" → intent: "top_coin_data"
+- "how is the market", "risk on", "macro", "yields" → intent: "market_trends"
+- "top coins", "top cryptos", "top tokens" → intent: "top_coin_data"
+- "top RWA coins", "best AI tokens", "popular DePIN projects" → intent: "category_coins"
 
-### Input:
+Input:
 Message: "${message}"
 Last messages:
 ${fullHistory}
 
-⚠️ Return only valid JSON (with double quotes). Do NOT include markdown, single quotes, or JS-style formatting.
-
-{
-  "intent": "coin_data",
-  "entities": {
-    "coins": ["/solana"],
-    "users": []
-  },
-  "context": "User wants data on Solana"
-}
-
-IMPORTANT: If you cannot parse the request, still return a valid JSON object with:
-{
-  "intent": "unknown",
-  "entities": { "coins": [], "users": [] },
-  "context": "Unclear request"
-}
-
+⚠️ Return valid JSON only. No markdown, comments, or extra text.
 `;
 
   try {
@@ -127,21 +155,20 @@ IMPORTANT: If you cannot parse the request, still return a valid JSON object wit
       .replace(/\n/g, "")
       .trim();
 
-    // Early check for clearly invalid strings
     if (!cleaned.startsWith("{") || !cleaned.includes("intent")) {
-      console.error("❌ Grok returned non-JSON or incomplete data:", cleaned);
+      console.error("❌ Grok returned invalid JSON:", cleaned);
       return {
         intent: "unknown",
         entities: { coins: [], users: [] },
-        context: "Grok returned invalid format — please try again.",
+        context: "Grok returned unstructured data — try again",
       };
     }
 
     function coerceToValidJSON(input: string): string {
       return input
-        .replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":') // keys
-        .replace(/:\s*'([^']*)'/g, ': "$1"') // single-quoted values
-        .replace(/:\s*([^,"{}\[\]\s]+)/g, ': "$1"'); // unquoted values
+        .replace(/([{,])\s*([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+        .replace(/:\s*'([^']*)'/g, ': "$1"')
+        .replace(/:\s*([^,"{}\[\]\s]+)/g, ': "$1"');
     }
 
     let parsed;
@@ -151,46 +178,45 @@ IMPORTANT: If you cannot parse the request, still return a valid JSON object wit
       try {
         parsed = JSON.parse(coerceToValidJSON(cleaned));
       } catch (e) {
-        console.error("Failed to parse prompt:", cleaned);
+        console.error("❌ Could not parse fallback JSON:", cleaned);
         return {
           intent: "unknown",
           entities: { coins: [], users: [] },
-          context: "Invalid parser format — please try again.",
+          context: "Invalid fallback parser format",
         };
       }
     }
 
     const parsedCoins =
       Array.isArray(parsed?.entities?.coins) &&
-      (parsed.entities.coins as unknown[]).every(
-        (v): v is string => typeof v === "string"
-      )
-        ? (parsed.entities.coins as string[]).map((c) => c.toLowerCase())
+      parsed.entities.coins.every((v: any) => typeof v === "string")
+        ? parsed.entities.coins.map((c: string) => c.toLowerCase())
         : coins;
 
     const parsedUsers =
       Array.isArray(parsed?.entities?.users) &&
-      (parsed.entities.users as unknown[]).every(
-        (v): v is string => typeof v === "string"
-      )
-        ? (parsed.entities.users as string[]).map((u) => u.toLowerCase())
+      parsed.entities.users.every((v: any) => typeof v === "string")
+        ? parsed.entities.users.map((u: string) => u.toLowerCase())
         : users;
 
     return {
-      intent: typeof parsed.intent === "string" ? parsed.intent : "unknown",
+      intent: parsed.intent || "unknown",
       entities: {
         coins: [...new Set(parsedCoins)],
         users: [...new Set(parsedUsers)],
+        ...(parsed.entities?.category && {
+          category: parsed.entities.category,
+        }),
+        ...(parsed.entities?.count && { count: parsed.entities.count }),
       },
-      context:
-        typeof parsed.context === "string" ? parsed.context : "unclear request",
+      context: parsed.context || "Unclear request",
     };
   } catch (error) {
     console.error("PromptParser Error:", error);
     return {
       intent: "unknown",
       entities: { coins, users },
-      context: "Failed to parse—please clarify",
+      context: "Failed to parse — please try again",
     };
   }
 }

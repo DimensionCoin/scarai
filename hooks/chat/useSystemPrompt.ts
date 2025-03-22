@@ -6,7 +6,9 @@ export function useSystemPrompt(
   trendingCoins: any[],
   allCoinData: Record<string, CoinData>,
   marketSnapshot?: MarketSnapshot | null,
-  topCoins?: ICryptoPlain[]
+  topCoins?: ICryptoPlain[],
+  category?: { name: string; category_id: string } | null,
+  count: number = 10 
 ) {
   const enrichedTrending = trendingCoins
     .map((tc) => ({
@@ -26,9 +28,15 @@ You are Scar Ai, a crypto trading and investing assistant built by xAI. Interpre
 
 ### Instructions by Intent
 
--**Intent: top_coin_data**;
-- If no coin is given, list the top 20 by market cap from **topCoins** with their price and 24h % change.
+- List the top ${count} coins in the matched category: **${
+    category?.name ?? "N/A"
+  }**
+- Return each coin on its own line with this format:
+  \`<rank>. <name> ($<price>, <24h change>% 24h, Rank: <rank>)\`
+- Do NOT summarize — just list the coins as-is unless explicitly asked
 
+- **Intent: top_coin_data**:
+  - If no coin is given, list the top 20 by market cap from **topCoins** with their price and 24h % change.
 
 - **Intent: coin_data**:
   Respond with:
@@ -37,17 +45,13 @@ You are Scar Ai, a crypto trading and investing assistant built by xAI. Interpre
   3. Technicals (RSI, MACD, SMA20)
   4. Summary + 1-line project description
   5. Social links (Twitter, Reddit, GitHub)
-  - If no coin is given, list the top 3 by market cap from **topCoins** with their price and 24h % change.
-
+  - If no coin is given, list the top 3 by market cap from **topCoins** with their price and 24h % change
 
 - **Intent: trading_advice**:
   - Suggest entry/exit zones ±2%
   - Consider RSI and volume
   - Mention if trending or high momentum
-  - If no coin is specified, use the topCoins list.
-  - Look for undervalued coins by checking 24h % change, 7d % change, and market cap rank.
-  - Mention the most promising one based on recent drops + strong fundamentals.
-
+  - If no coin is specified, use the topCoins list
 
 - **Intent: investment_strategy**:
   - Discuss 90d change, cap size, volume trends
@@ -85,7 +89,7 @@ You are Scar Ai, a crypto trading and investing assistant built by xAI. Interpre
        ?.slice(0, 3)
        .map(
          (c) =>
-           `${c.name} ($${c.current_price}, 24h ${c.price_change_percentage_24h}%)`
+           `\`${c.name} ($${c.current_price}, 24h ${c.price_change_percentage_24h}%)\``
        )
        .join(", ")}
 
@@ -120,6 +124,8 @@ You are Scar Ai, a crypto trading and investing assistant built by xAI. Interpre
     marketSnapshot?.crypto.stablecoins.usdt.deviation?.toFixed(4) ?? "N/A"
   })
 
+---
+
 ### Top Coins Snapshot:
 ${topCoins
   ?.slice(0, 5)
@@ -133,6 +139,25 @@ ${topCoins
 
 ---
 
+### Category Snapshot:
+${
+  category && topCoins?.length
+    ? `Category: ${category.name}
+Top ${count} Coins in ${category.name}:\n${topCoins
+        .slice(0, count)
+        .map(
+          (c, i) =>
+            `${i + 1}. ${c.name} ($${c.current_price}, ${
+              c.price_change_percentage_24h
+            }% 24h, Rank: ${i + 1})`
+        )
+        .join("\n")}`
+    : category
+    ? `Category: ${category.name}\nNo coin data available.`
+    : "No category matched."
+}
+
+
 ### Rules
 - Do not output JSON
 - Keep responses beginner-friendly
@@ -144,6 +169,7 @@ ${topCoins
 **Coin Data:** ${JSON.stringify(allCoinData)}
 **Trending Coins:** ${JSON.stringify(enrichedTrending)}
 **Macro Data Included:** ${marketSnapshot ? "Yes" : "No"}
+**Category Matched:** ${category?.name ?? "None"}
 **Date:** ${new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
