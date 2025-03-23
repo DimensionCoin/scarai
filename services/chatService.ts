@@ -43,7 +43,8 @@ export async function processChatRequest({
   const parsedPrompt = await usePromptParser(message, chatHistory);
   const { coins, count = 10 } = parsedPrompt.entities;
   const coinId = coins?.[0];
-
+    console.log(parsedPrompt)
+    
   // ✅ Step 3: Category Matching (if applicable)
   const matchedCategory =
     parsedPrompt.intent === "category_coins"
@@ -91,7 +92,6 @@ export async function processChatRequest({
     : [];
 
 
-  console.log("🧩 Coin Data:", JSON.stringify(coinData, null, 2));
   console.log("📉 Macro Data:", JSON.stringify(marketSnapshot, null, 2));
   console.log("📊 Market Snapshot Sent to Grok:", marketSnapshot);
   console.log("🪙 Top Coins Sent to Grok:", topCoins?.slice(0, 2));

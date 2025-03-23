@@ -69,6 +69,18 @@ export async function usePromptParser(
     };
   }
 
+  if (
+    /\b(enter|entry|exit|stop-loss|long|short|tp|sl|target|levels|liquidation)\b/i.test(
+      message
+    )
+  ) {
+    return {
+      intent: "trading_advice",
+      entities: { coins, users },
+      context: "User is requesting trading advice for one or more coins",
+    };
+  }
+
   // ✅ Fallback for "top coins" generally
   if (/top (coins|tokens|cryptos)/i.test(message)) {
     return {
@@ -85,6 +97,30 @@ export async function usePromptParser(
       context: "User is asking for the top coins by market cap",
     };
   }
+  if (/what\s+is\s+\/\w+/i.test(message)) {
+    return {
+      intent: "explain_concept",
+      entities: { coins, users },
+      context: `User is asking for a beginner-friendly explanation of ${coins[0]}`,
+    };
+  }
+
+  if (coins.length >= 2) {
+    return {
+      intent: "compare",
+      entities: { coins, users },
+      context: `User is comparing ${coins.join(" vs ")}`,
+    };
+  }
+
+  if (/\b(price|pumping|up|down|moving)\b/i.test(message) && coins.length > 0) {
+    return {
+      intent: "coin_data",
+      entities: { coins, users },
+      context: `User is asking for recent price movement or trends for ${coins[0]}`,
+    };
+  }
+
 
   // ✅ Handle follow-up messages
   if (
@@ -151,9 +187,10 @@ ${fullHistory}
 
     const raw = completion.choices[0]?.message?.content || "{}";
     const cleaned = raw
-      .replace(/```json|```/g, "")
-      .replace(/\n/g, "")
-      .trim();
+     .replace(/```(json)?/gi, "")
+     .replace(/^.*?{/, "{")
+     .replace(/\n/g, "")
+     .trim();
 
     if (!cleaned.startsWith("{") || !cleaned.includes("intent")) {
       console.error("❌ Grok returned invalid JSON:", cleaned);
