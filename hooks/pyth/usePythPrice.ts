@@ -42,7 +42,7 @@ export const usePythPrices = (feedIds: string[]) => {
     };
 
     fetchPrices();
-    intervalRef.current = setInterval(fetchPrices, 1000);
+    intervalRef.current = setInterval(fetchPrices, 10000);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);

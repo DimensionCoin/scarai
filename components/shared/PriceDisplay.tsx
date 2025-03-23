@@ -71,7 +71,7 @@ const CryptoPriceHero: React.FC = () => {
       // Delay updating previousPrices to let the color show
       setTimeout(() => {
         setPreviousPrices((prev) => ({ ...prev, [id]: currentPrice }));
-      }, 500);
+      }, 10000);
     });
 
     setPriceChangeDirection(newDirection);

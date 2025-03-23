@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { redis } from "@/lib/redis";
+import { connect } from "@/db";
+import PythPrices from "@/models/pythprice.model";
+import type { PriceData } from "@/hooks/pyth/usePythPrice"; // ✅ adjust this import if needed
 
 const normalizeId = (id: string) =>
   id.startsWith("0x") ? id.slice(2).toLowerCase() : id.toLowerCase();
@@ -15,19 +17,35 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const prices = await Promise.all(
-      ids.map(async (id) => {
-        const normId = normalizeId(id);
-        const price = await redis.get(`price:${normId}`);
-        return { id: normId, price };
-      })
-    );
+    await connect();
+
+    const latestDoc = (await PythPrices.findOne({
+      key: "latest",
+    }).lean()) as unknown as {
+      prices: Record<string, PriceData>;
+      updatedAt: Date;
+    };
+
+    if (!latestDoc || !latestDoc.prices) {
+      return NextResponse.json(
+        { error: "No price data available" },
+        { status: 404 }
+      );
+    }
+
+    const prices = ids.map((id) => {
+      const normId = normalizeId(id);
+      return {
+        id: normId,
+        price: latestDoc.prices[normId] || null,
+      };
+    });
 
     return NextResponse.json(prices);
   } catch (error) {
-    console.error("❌ Redis fetch failed:", error);
+    console.error("❌ Mongo fetch failed:", error);
     return NextResponse.json(
-      { error: "Failed to fetch from Redis" },
+      { error: "Failed to fetch from database" },
       { status: 500 }
     );
   }
