@@ -23,7 +23,6 @@ const formatPrice = (raw: string, expo: number) => {
 
 const CryptoPriceHero: React.FC = () => {
   const { userId } = useAuth();
-  // We'll remove localStorage and instead load from our API
   const [selectedCoinIds, setSelectedCoinIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -35,6 +34,48 @@ const CryptoPriceHero: React.FC = () => {
   // Extract feed IDs from the selected coins (only coins with non-empty IDs)
   const feedIds = selectedCoinIds.filter((id) => id.trim() !== "");
   const { prices, error } = usePythPrices(feedIds);
+
+  // price green when up and red when down
+  const [previousPrices, setPreviousPrices] = useState<{
+    [key: string]: number;
+  }>({});
+  const [priceChangeDirection, setPriceChangeDirection] = useState<{
+    [key: string]: "up" | "down" | "same";
+  }>({});
+  
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const newPrevious: { [key: string]: number } = { ...previousPrices };
+    const newDirection: { [key: string]: "up" | "down" | "same" } = {
+      ...priceChangeDirection,
+    };
+
+    Object.keys(prices).forEach((id) => {
+      const current = prices[id];
+      if (!current) return;
+
+      const currentPrice = Number(current.price) * Math.pow(10, current.expo);
+      const prev = previousPrices[id];
+
+      if (prev === undefined) {
+        newPrevious[id] = currentPrice;
+        newDirection[id] = "same";
+      } else if (currentPrice > prev) {
+        newDirection[id] = "up";
+      } else if (currentPrice < prev) {
+        newDirection[id] = "down";
+      } else {
+        newDirection[id] = "same";
+      }
+
+      // Delay updating previousPrices to let the color show
+      setTimeout(() => {
+        setPreviousPrices((prev) => ({ ...prev, [id]: currentPrice }));
+      }, 500);
+    });
+
+    setPriceChangeDirection(newDirection);
+  }, [prices]);
 
   // On mount: fetch user's top 3 coins from the DB
   useEffect(() => {
@@ -187,7 +228,15 @@ const CryptoPriceHero: React.FC = () => {
                             {coin.name}
                           </h3>
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-1">
-                            <p className="text-xs sm:text-sm font-semibold text-white">
+                            <p
+                              className={`text-xs sm:text-sm font-semibold ${
+                                priceChangeDirection[normId] === "up"
+                                  ? "text-green-400"
+                                  : priceChangeDirection[normId] === "down"
+                                  ? "text-red-400"
+                                  : "text-white"
+                              }`}
+                            >
                               {priceData ? (
                                 `$${formatPrice(
                                   priceData.price,
