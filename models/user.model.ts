@@ -14,7 +14,19 @@ const UserSchema = new Schema(
     },
     customerId: { type: String, default: "" },
     credits: { type: Number, required: true, default: 20 },
-    topCoins: { type: [String], default: [] }, // Store the top 3 coin IDs
+    topCoins: { type: [String], default: [] },
+    creditHistory: [
+      {
+        type: {
+          type: String, // "coin" | "oracle"
+          required: true,
+        },
+        coin: String, // only for type === "coin"
+        message: String, // only for type === "oracle"
+        creditsUsed: { type: Number, required: true },
+        timestamp: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );

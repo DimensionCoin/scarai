@@ -165,3 +165,46 @@ export async function updateUserTopCoins(userId: string, topCoins: string[]) {
     throw new Error("Error updating user's top coins");
   }
 }
+
+export async function logCreditUsage({
+  userId,
+  type,
+  coin,
+  message,
+  creditsUsed,
+}: {
+  userId: string;
+  type: "coin" | "oracle";
+  coin?: string;
+  message?: string;
+  creditsUsed: number;
+}) {
+  try {
+    await connect();
+    const user = await User.findOne({ clerkId: userId });
+    if (!user) throw new Error("User not found");
+
+    // ✅ Initialize creditHistory if missing
+    if (!Array.isArray(user.creditHistory)) {
+      user.creditHistory = [];
+    }
+
+    user.creditHistory.unshift({
+      type,
+      coin,
+      message,
+      creditsUsed,
+      timestamp: new Date(),
+    });
+
+    // Keep only the latest 50 entries
+    if (user.creditHistory.length > 50) {
+      user.creditHistory = user.creditHistory.slice(0, 50);
+    }
+
+    await user.save();
+  } catch (error) {
+    console.error("Error logging credit usage:", error);
+    throw new Error("Failed to log credit usage");
+  }
+}

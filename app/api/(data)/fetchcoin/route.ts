@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { hasEnoughCredits, deductCredits } from "@/actions/user.actions";
+import {
+  hasEnoughCredits,
+  deductCredits,
+  logCreditUsage,
+} from "@/actions/user.actions";
 
 // Define a Ticker interface with the fields you use
 interface Ticker {
@@ -81,9 +85,16 @@ export async function GET(req: Request) {
         ) || tickers[0];
     }
 
-    // Deduct credits after successful fetch
+    // Deduct credits after successful fetch and log usage
     await deductCredits(userId, 1);
     console.log(`Deducted 1 credit for user ${userId}`);
+
+    await logCreditUsage({
+      userId,
+      type: "coin",
+      coin: coinId,
+      creditsUsed: 1,
+    });
 
     // Return the coin data along with the selected ticker
     return NextResponse.json(

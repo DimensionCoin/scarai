@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { ChatMessage } from "@/types/chat";
-import { deductCredits } from "@/actions/user.actions";
+import { deductCredits, logCreditUsage } from "@/actions/user.actions";
 
 import { useValidation } from "@/hooks/chat/useValidation";
 import { usePromptParser } from "@/hooks/chat/usePromptParser";
@@ -107,8 +107,14 @@ export async function processChatRequest({
   const response =
     completion.choices[0]?.message?.content || "No response generated";
 
-  // ✅ Step 7: Deduct Usage
+  // ✅ Step 7: Deduct credits and log usage 
   await deductCredits(userId, 2);
+  await logCreditUsage({
+    userId,
+    type: "oracle",
+    message,
+    creditsUsed: 2,
+  });
 
   return response;
 }
