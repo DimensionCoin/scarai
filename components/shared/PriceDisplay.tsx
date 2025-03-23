@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { coins } from "@/hooks/pyth/coin";
 import { usePythPrices } from "@/hooks/pyth/usePythPrice";
-import { Settings, X, Search, Check, Loader2 } from "lucide-react";
+import { X, Search, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@clerk/nextjs";
@@ -41,7 +41,7 @@ const CryptoPriceHero: React.FC = () => {
     const fetchTopCoins = async () => {
       if (!userId) return;
       try {
-        const res = await fetch(`/api/topcoins?clerkId=${userId}`);
+        const res = await fetch(`/api/usercoins?clerkId=${userId}`);
         const data = await res.json();
         if (data.topCoins && data.topCoins.length === 3) {
           setSelectedCoinIds(data.topCoins);
@@ -93,7 +93,7 @@ const CryptoPriceHero: React.FC = () => {
   const saveSelections = async () => {
     if (!userId) return;
     try {
-      await fetch("/api/topcoins", {
+      await fetch("/api/usercoins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clerkId: userId, topCoins: tempSelectedIds }),
@@ -123,11 +123,12 @@ const CryptoPriceHero: React.FC = () => {
             </h2>
             <Button
               variant="ghost"
-              size="icon"
-              className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-teal-400"
+              size="sm" // Changed from "icon" to "sm" for better text fit
+              className="bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-teal-400 px-1.5" // Added padding
               onClick={() => setIsModalOpen(true)}
             >
-              <Settings className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-teal-400" />
+              <p className="text-xs sm:text-sm">Change Top Coins</p>{" "}
+              {/* Controlled text size */}
             </Button>
           </div>
           {isLoading ? (
