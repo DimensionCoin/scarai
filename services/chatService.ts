@@ -41,15 +41,14 @@ export async function processChatRequest({
 
   // ✅ Step 2: Parse Prompt
   const parsedPrompt = await usePromptParser(message, chatHistory);
-  console.log("Parsed Prompt:", parsedPrompt);
-
   const { coins, count = 10 } = parsedPrompt.entities;
+  const coinId = coins?.[0];
 
   // ✅ Step 3: Category Matching (if applicable)
- const matchedCategory =
-   parsedPrompt.intent === "category_coins"
-     ? matchCategoryFromQuery(parsedPrompt.entities.category || message)
-     : null;
+  const matchedCategory =
+    parsedPrompt.intent === "category_coins"
+      ? matchCategoryFromQuery(parsedPrompt.entities.category || message)
+      : null;
 
   const categoryCoins = matchedCategory
     ? await fetchCategoryCoins(matchedCategory.category_id, count)
@@ -60,17 +59,44 @@ export async function processChatRequest({
     [
       useUnifiedCoinData(coins),
       useTrendingCoins(),
-      parsedPrompt.intent === "market_trends"
+      ["market_trends", "trading_advice", "investment_strategy"].includes(
+        parsedPrompt.intent
+      )
         ? useMarketSnapshot()
         : Promise.resolve(null),
       useTopCryptoData(),
     ]
   );
 
+  // ✅ Step 4.5: Extract single coin snapshot (for trading_advice, coin_data, etc.)
+  const selectedCoin = coinId ? coinData[coinId] : null;
+
+  const cleanCoinData = selectedCoin
+    ? [
+        {
+          name: coinId,
+          price: selectedCoin.current?.price ?? null,
+          rsi: selectedCoin.historical?.technicals?.rsi ?? null,
+          macd: selectedCoin.historical?.technicals?.macd?.macd ?? null,
+          macdHist:
+            selectedCoin.historical?.technicals?.macd?.histogram ?? null,
+          sma20: selectedCoin.historical?.technicals?.sma?.sma20 ?? null,
+          volume: selectedCoin.current?.volume ?? null,
+          change24h: selectedCoin.current?.change24h ?? null,
+          change7d: selectedCoin.marketTrends?.change7d ?? null,
+          change30d: selectedCoin.marketTrends?.change30d ?? null,
+          rangeSummary: selectedCoin.historical?.summary ?? null,
+        },
+      ]
+    : [];
+
+
+  console.log("🧩 Coin Data:", JSON.stringify(coinData, null, 2));
+  console.log("📉 Macro Data:", JSON.stringify(marketSnapshot, null, 2));
   console.log("📊 Market Snapshot Sent to Grok:", marketSnapshot);
-  console.log("🪙 Top Coins Sent to Grok:", topCoins?.slice(0, 20));
+  console.log("🪙 Top Coins Sent to Grok:", topCoins?.slice(0, 2));
   console.log("🗂️ Category Match:", matchedCategory?.name ?? "None");
-  console.log("📦 Category Coins:", categoryCoins?.slice(0, 100));
+  console.log("📦 Category Coins:", categoryCoins?.slice(0, 2));
 
   // ✅ Step 5: Build System Prompt
   const systemPrompt = useSystemPrompt(
@@ -79,7 +105,8 @@ export async function processChatRequest({
     marketSnapshot,
     parsedPrompt.intent === "category_coins" ? categoryCoins : topCoins,
     matchedCategory,
-    parsedPrompt.entities.count ?? 10 // 👈 pass count here
+    parsedPrompt.entities.count ?? 10,
+    cleanCoinData
   );
 
   // ✅ Step 6: Call Grok
@@ -97,7 +124,7 @@ export async function processChatRequest({
         role: "user",
         content: `Original: "${message}"\nParsed: ${JSON.stringify(
           parsedPrompt
-        )}\nCoin Data: ${JSON.stringify(coinData)}`,
+        )}`,
       },
     ],
     max_tokens: 800,
@@ -107,7 +134,7 @@ export async function processChatRequest({
   const response =
     completion.choices[0]?.message?.content || "No response generated";
 
-  // ✅ Step 7: Deduct credits and log usage 
+  // ✅ Step 7: Deduct credits and log usage
   await deductCredits(userId, 2);
   await logCreditUsage({
     userId,
