@@ -23,6 +23,8 @@ import { UserButton } from "@clerk/nextjs";
 import { useUserContext } from "@/providers/UserProvider";
 import { useUser } from "@clerk/nextjs";
 import LavaLampEffect from "@/components/shared/LavaLampEffect";
+// Import the MessageFormatter component
+import MessageFormatter from "@/components/shared/MessageFormatter";
 
 // Cryptocurrency interface
 interface Cryptocurrency {
@@ -221,7 +223,6 @@ export default function ChatPage() {
         updateMessage(assistantMessage);
       }
 
-
       refreshUser(); // ✅ Update credit count after success
     } catch (error: unknown) {
       console.error("Error streaming response:", error);
@@ -243,7 +244,6 @@ export default function ChatPage() {
       setLoading(false);
     }
   };
-
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -356,11 +356,15 @@ export default function ChatPage() {
                           : "bg-black/10 backdrop-blur-md rounded-xl border border-white/10 p-3"
                       }`}
                     >
-                      <p className="text-zinc-100 whitespace-pre-wrap text-xs sm:text-sm">
-                        {typeof msg.content === "string"
-                          ? msg.content
-                          : JSON.stringify(msg.content)}
-                      </p>
+                      {msg.role === "assistant" ? (
+                        <MessageFormatter content={msg.content} />
+                      ) : (
+                        <p className="text-zinc-100 whitespace-pre-wrap text-xs sm:text-sm">
+                          {typeof msg.content === "string"
+                            ? msg.content
+                            : JSON.stringify(msg.content)}
+                        </p>
+                      )}
                     </div>
                     <div className="mt-1 text-[9px] text-zinc-500 flex items-center gap-1">
                       <Clock className="h-2 w-2" />
