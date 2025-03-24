@@ -44,6 +44,10 @@ export interface CoinData {
       macd: { macd: number; signal: number; histogram: number } | null;
       sma: { sma20: number } | null;
     };
+    extended?: {
+      volatility: number | null;
+      avgVolume: number | null;
+    };
   };
   isTrending?: boolean;
 }

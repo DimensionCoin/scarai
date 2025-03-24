@@ -1,6 +1,7 @@
 import { ICryptoPlain } from "@/models/crypto.model";
 import { CoinData } from "@/types/coinData";
 import { MarketSnapshot } from "@/types/MarketSnapshot";
+import { ITrending } from "@/models/trending.model";
 
 export function useSystemPrompt(
   trendingCoins: any[],
@@ -15,12 +16,12 @@ export function useSystemPrompt(
     .map((tc) => ({
       id: tc.id,
       name: tc.name,
-      rank: tc.marketCapRank,
-      price: allCoinData[tc.id]?.current.price || "N/A",
-      change24h: allCoinData[tc.id]?.current.change24h || "N/A",
-      volume: allCoinData[tc.id]?.current.volume || "N/A",
+      rank: tc.rank,
+      price: tc.current_price ?? "N/A",
+      change24h: tc.price_change_percentage_24h ?? "N/A",
+      volume: tc.total_volume ?? "N/A",
     }))
-    .filter((tc) => tc.id && (allCoinData[tc.id] || tc.name));
+    .filter((tc) => tc.id && tc.name);
 
   const firstCoin = cleanCoinData?.[0];
 
@@ -67,6 +68,13 @@ You are Scar Ai, a crypto trading and investing assistant built by xAI. Interpre
 - Analyze volume:
   - Increasing volume → confidence in move
   - Low volume → caution on breakout/breakdown
+- Use volatility to assess risk and market behavior:
+  - High volatility (> 0.03) = rapid price swings, use tighter stops
+  - Low volatility (< 0.01) = range-bound, avoid aggressive trades
+- Use average volume to validate trend:
+  - Rising avg volume supports momentum
+  - Weak avg volume suggests low confidence in moves
+
 
 ---
 
@@ -295,6 +303,8 @@ ${topCoins
 - 7d Change: ${firstCoin?.change7d ?? "N/A"}%
 - 30d Change: ${firstCoin?.change30d ?? "N/A"}%
 - 90d Range: ${firstCoin?.rangeSummary ?? "N/A"}
+- 🔁 Volatility (48h std dev): ${firstCoin?.volatility?.toFixed(4) ?? "N/A"}
+- 📈 Avg Volume (48h): $${firstCoin?.avgVolume?.toLocaleString() ?? "N/A"}
 
 
 ### Rules

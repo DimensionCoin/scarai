@@ -44,7 +44,6 @@ export async function processChatRequest({
   const { coins, count = 10 } = parsedPrompt.entities;
   const coinId = coins?.[0];
     console.log(parsedPrompt)
-    
   // ✅ Step 3: Category Matching (if applicable)
   const matchedCategory =
     parsedPrompt.intent === "category_coins"
@@ -87,6 +86,8 @@ export async function processChatRequest({
           change7d: selectedCoin.marketTrends?.change7d ?? null,
           change30d: selectedCoin.marketTrends?.change30d ?? null,
           rangeSummary: selectedCoin.historical?.summary ?? null,
+          volatility: selectedCoin.historical?.extended?.volatility ?? null,
+          avgVolume: selectedCoin.historical?.extended?.avgVolume ?? null,
         },
       ]
     : [];
