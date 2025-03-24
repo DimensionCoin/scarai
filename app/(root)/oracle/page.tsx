@@ -185,16 +185,18 @@ export default function ChatPage() {
 
       // Check if response is ok first
       if (!response.ok) {
-        // Try to get error message from response
+        // Get error message from response - clone it first to avoid "body already read" error
+        const clonedResponse = response.clone();
         let errorText;
+
         try {
           // Try to parse as JSON first
-          const errorData = await response.json();
+          const errorData = await clonedResponse.json();
           errorText =
             errorData.error ||
             `Error: ${response.status} ${response.statusText}`;
         } catch {
-          // If JSON parsing fails, get text content
+          // If JSON parsing fails, get text content from original response
           errorText = await response.text();
           // Limit error text length
           errorText =
@@ -205,26 +207,40 @@ export default function ChatPage() {
         throw new Error(errorText);
       }
 
-      // Parse JSON response
-      let data;
+      // For successful responses, try to parse as JSON or text
+      let responseContent;
+      const clonedResponse = response.clone();
+
       try {
-        data = await response.json();
-      } catch (error) {
-        // Log the actual parsing error
-        console.error("Error parsing JSON response:", error);
-        throw new Error("Invalid JSON response from server");
+        // Try to parse as JSON first
+        const data = await clonedResponse.json();
+        if (data.response) {
+          responseContent = data.response;
+        } else {
+          throw new Error(data.error || "Invalid response format from server");
+        }
+      } catch {
+        // If JSON parsing fails, try to get text content
+        try {
+          responseContent = await response.text();
+        } catch (textError) {
+          console.error("Error reading response as text:", textError);
+          throw new Error("Failed to read server response");
+        }
       }
 
-      if (data.response) {
-        setMessages([
-          ...messages,
-          userMessage,
-          { role: "assistant", content: data.response, timestamp: new Date() },
-        ]);
-        refreshUser();
-      } else {
-        throw new Error(data.error || "Invalid response format from server");
-      }
+      // Add the response to messages
+      setMessages([
+        ...messages,
+        userMessage,
+        {
+          role: "assistant",
+          content: responseContent,
+          timestamp: new Date(),
+        },
+      ]);
+
+      refreshUser();
     } catch (error: unknown) {
       console.error("Error sending message:", error);
       let errorMessage = "Something went wrong. Please try again.";

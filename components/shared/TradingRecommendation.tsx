@@ -24,10 +24,10 @@ const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
     (content.includes("**Current Price:") || content.includes("**Entry:"));
 
   if (!isTradingRecommendation) {
-    // Return regular content if not a trading recommendation
+    // Format regular content with special handling for **bold** text
     return (
       <p className="whitespace-pre-wrap text-xs sm:text-sm text-zinc-100">
-        {content}
+        {formatTextWithAsterisks(content)}
       </p>
     );
   }
@@ -143,7 +143,9 @@ const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
               Risk Analysis
             </span>
           </div>
-          <p className="text-xs text-zinc-300">{riskNote}</p>
+          <p className="text-xs text-zinc-300">
+            {formatTextWithAsterisks(riskNote)}
+          </p>
         </div>
       )}
 
@@ -156,11 +158,36 @@ const TradingRecommendation: React.FC<TradingRecommendationProps> = ({
               Macro Summary
             </span>
           </div>
-          <p className="text-xs text-zinc-300">{macroSummary}</p>
+          <p className="text-xs text-zinc-300">
+            {formatTextWithAsterisks(macroSummary)}
+          </p>
         </div>
       )}
     </div>
   );
+};
+
+// Helper function to format text with asterisks
+const formatTextWithAsterisks = (text: string): React.ReactNode => {
+  if (!text) return text;
+
+  // Split the text by double asterisks
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+
+  return parts.map((part, index) => {
+    // Check if this part is surrounded by double asterisks
+    if (part.startsWith("**") && part.endsWith("**")) {
+      // Remove the asterisks and apply special styling
+      const content = part.slice(2, -2);
+      return (
+        <span key={index} className="font-semibold text-teal-400">
+          {content}
+        </span>
+      );
+    }
+    // Return regular text
+    return part;
+  });
 };
 
 export default TradingRecommendation;
