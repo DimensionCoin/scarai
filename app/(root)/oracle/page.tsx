@@ -183,9 +183,39 @@ export default function ChatPage() {
         }),
       });
 
-      const data = await response.json();
+      // Check if response is ok first
+      if (!response.ok) {
+        // Try to get error message from response
+        let errorText;
+        try {
+          // Try to parse as JSON first
+          const errorData = await response.json();
+          errorText =
+            errorData.error ||
+            `Error: ${response.status} ${response.statusText}`;
+        } catch {
+          // If JSON parsing fails, get text content
+          errorText = await response.text();
+          // Limit error text length
+          errorText =
+            errorText.length > 150
+              ? errorText.substring(0, 150) + "..."
+              : errorText;
+        }
+        throw new Error(errorText);
+      }
 
-      if (response.ok && data.response) {
+      // Parse JSON response
+      let data;
+      try {
+        data = await response.json();
+      } catch (error) {
+        // Log the actual parsing error
+        console.error("Error parsing JSON response:", error);
+        throw new Error("Invalid JSON response from server");
+      }
+
+      if (data.response) {
         setMessages([
           ...messages,
           userMessage,
@@ -193,7 +223,7 @@ export default function ChatPage() {
         ]);
         refreshUser();
       } else {
-        throw new Error(data.error || "Invalid response from server");
+        throw new Error(data.error || "Invalid response format from server");
       }
     } catch (error: unknown) {
       console.error("Error sending message:", error);
