@@ -467,8 +467,7 @@ export default function ChatPage() {
                   <span className="font-medium">/hedera-hashgraph</span>,{" "}
                   <span className="font-medium">/the-open-network</span>,{" "}
                   <span className="font-medium">/solana</span>
-                  ). To search X posts, mention a username (e.g.,{" "}
-                  <span className="font-medium">@cz_binance</span>).
+                  )
                 </p>
               </div>
             </div>
