@@ -40,7 +40,7 @@ function calculateAverageVolume(volumes: number[][]): number {
 
 /**
  * Fetches 90-day historical price data, plus 48h intraday range data,
- * and calculates RSI, MACD, SMA, volatility, and average volume.
+ * and calculates RSI, MACD, SMA, StochRSI, volume support, volatility, and average volume.
  */
 export async function useHistoricalCoinData(
   tickers: string[],
@@ -72,10 +72,7 @@ export async function useHistoricalCoinData(
 
       const data = await response.json();
       const prices = data.prices as number[][];
-
       if (prices.length < 26) continue;
-
-      const indicators = calculateIndicators(prices);
 
       // Step 2: Wait 2 seconds before range fetch
       await new Promise((res) => setTimeout(res, 2000));
@@ -102,15 +99,24 @@ export async function useHistoricalCoinData(
       const avgVolume =
         volumes.length > 0 ? calculateAverageVolume(volumes) : null;
 
+      const currentVolume =
+        parseFloat(updatedCoinData[ticker]?.current?.volume ?? "0") ||
+        undefined;
+
+      const indicators = calculateIndicators(prices, volumes, currentVolume);
+
       updatedCoinData[ticker].historical = {
         prices,
+        volumes, // ✅ now stored
         summary: `90-day range: $${Math.min(...prices.map((p) => p[1])).toFixed(
           2
         )} - $${Math.max(...prices.map((p) => p[1])).toFixed(2)}`,
         technicals: {
           rsi: indicators.rsi,
+          stochRsi: indicators.stochRsi,
           macd: indicators.macd,
           sma: indicators.sma,
+          volumeSupport: indicators.volumeSupport,
         },
         extended: {
           volatility,

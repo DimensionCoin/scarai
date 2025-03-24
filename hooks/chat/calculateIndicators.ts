@@ -16,18 +16,36 @@ function calculateMACD(prices: number[][]): {
   macd: number;
   signal: number;
   histogram: number;
+  isRising: boolean;
+  crossover: "bullish" | "bearish" | null;
 } {
   const closePrices = prices.map(([, price]) => price);
-  const ema12 = calculateEMA(closePrices.slice(-26), 12);
-  const ema26 = calculateEMA(closePrices.slice(-26), 26);
-  const macdLine = ema12[ema12.length - 1] - ema26[ema26.length - 1];
-  const signalLine = calculateEMA(closePrices.slice(-9), 9)[8];
+  const recent = closePrices.slice(-35); // extra buffer
+
+  const ema12 = calculateEMA(recent, 12);
+  const ema26 = calculateEMA(recent, 26);
+
+  const macdLine = ema12.map((v, i) => v - ema26[i]);
+  const signalLine = calculateEMA(macdLine, 9);
+  const histogram = macdLine.map((v, i) => v - signalLine[i]);
+
+  const last = macdLine.length - 1;
+  const prev = last - 1;
+
   return {
-    macd: macdLine,
-    signal: signalLine,
-    histogram: macdLine - signalLine,
+    macd: macdLine[last],
+    signal: signalLine[last],
+    histogram: histogram[last],
+    isRising: macdLine[last] > macdLine[prev],
+    crossover:
+      macdLine[prev] < signalLine[prev] && macdLine[last] > signalLine[last]
+        ? "bullish"
+        : macdLine[prev] > signalLine[prev] && macdLine[last] < signalLine[last]
+        ? "bearish"
+        : null,
   };
 }
+
 
 function calculateRSI(prices: number[][]): number {
   const changes = prices
@@ -40,11 +58,70 @@ function calculateRSI(prices: number[][]): number {
   return losses === 0 ? 100 : 100 - 100 / (1 + gains / losses);
 }
 
-export function calculateIndicators(prices: number[][]) {
-  if (prices.length < 26) return { rsi: null, macd: null, sma: null }; // Minimum for MACD
+function calculateStochRSI(prices: number[][]): number {
+  const close = prices.map(([, price]) => price);
+  const rsiPeriod = 14;
+  const rsi = close
+    .slice(-rsiPeriod - 1)
+    .map((_, i, arr) => {
+      if (i + rsiPeriod >= arr.length) return null;
+      const slice = arr.slice(i, i + rsiPeriod);
+      const gains = slice
+        .map((v, j) => (j > 0 && v > slice[j - 1] ? v - slice[j - 1] : 0))
+        .reduce((a, b) => a + b, 0);
+      const losses = slice
+        .map((v, j) => (j > 0 && v < slice[j - 1] ? slice[j - 1] - v : 0))
+        .reduce((a, b) => a + b, 0);
+      const rs = losses === 0 ? 100 : gains / losses;
+      return 100 - 100 / (1 + rs);
+    })
+    .filter(Boolean) as number[];
+
+  const lowest = Math.min(...rsi);
+  const highest = Math.max(...rsi);
+  const latest = rsi[rsi.length - 1];
+  return ((latest - lowest) / (highest - lowest)) * 100;
+}
+
+function isVolumeSupportingMove(
+  currentVolume: number,
+  volumes: number[][]
+): boolean {
+  const avgVolume =
+    volumes.map(([, v]) => v).reduce((a, b) => a + b, 0) / volumes.length;
+  return currentVolume > avgVolume;
+}
+
+export function calculateIndicators(
+  prices: number[][],
+  volumes?: number[][],
+  currentVolume?: number
+) {
+  if (prices.length < 26) {
+    return {
+      rsi: null,
+      stochRsi: null,
+      macd: null,
+      sma: null,
+      volumeSupport: undefined,
+    };
+  }
+
+  const rsi = calculateRSI(prices);
+  const stochRsi = calculateStochRSI(prices);
+  const macd = calculateMACD(prices);
+  const sma20 = calculateSMA(prices, 20);
+
+  const volumeSupport =
+    volumes && currentVolume
+      ? isVolumeSupportingMove(currentVolume, volumes)
+      : undefined;
+
   return {
-    rsi: calculateRSI(prices),
-    macd: calculateMACD(prices),
-    sma: { sma20: calculateSMA(prices, 20) },
+    rsi,
+    stochRsi,
+    macd,
+    sma: { sma20 },
+    volumeSupport,
   };
 }

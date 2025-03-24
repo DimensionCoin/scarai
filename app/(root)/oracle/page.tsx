@@ -23,6 +23,7 @@ import { UserButton } from "@clerk/nextjs";
 import { useUserContext } from "@/providers/UserProvider";
 import { useUser } from "@clerk/nextjs";
 import LavaLampEffect from "@/components/shared/LavaLampEffect";
+import TradingRecommendation from "@/components/shared/TradingRecommendation";
 
 // Cryptocurrency interface
 interface Cryptocurrency {
@@ -46,7 +47,10 @@ const exampleQueries = [
   "How to evaluate crypto projects?",
   "Crypto investing risks?",
   "How is /solana performing today",
-  "has @ansem said anything about meme coins",
+  "/bitcoin",
+  "How would you trade /hyperliquid today?",
+  "How are the markets looking today?",
+  "Break down /solana price performance",
 ];
 
 // Icons for the example queries
@@ -320,9 +324,13 @@ export default function ChatPage() {
                           : "bg-black/10 backdrop-blur-md rounded-xl border border-white/10 p-3"
                       }`}
                     >
-                      <p className="text-zinc-100 whitespace-pre-wrap text-xs sm:text-sm">
-                        {msg.content}
-                      </p>
+                      {msg.role === "assistant" ? (
+                        <TradingRecommendation content={msg.content} />
+                      ) : (
+                        <p className="text-zinc-100 whitespace-pre-wrap text-xs sm:text-sm">
+                          {msg.content}
+                        </p>
+                      )}
                     </div>
                     <div className="mt-1 text-[9px] text-zinc-500 flex items-center gap-1">
                       <Clock className="h-2 w-2" />

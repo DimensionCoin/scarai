@@ -32,8 +32,8 @@ export async function usePromptParser(
   context: string;
 }> {
   const client = new OpenAI({
-    apiKey: process.env.GROK_API_KEY!,
-    baseURL: "https://api.x.ai/v1",
+    apiKey: process.env.DEEPSEEK_API_KEY!,
+    baseURL: "https://api.deepseek.com",
   });
 
   const { coins, users } = extractEntities(message);
@@ -179,7 +179,7 @@ ${fullHistory}
 
   try {
     const completion = await client.chat.completions.create({
-      model: "grok-2-latest",
+      model: "deepseek-chat",
       messages: [{ role: "system", content: systemPrompt }],
       max_tokens: 150,
       temperature: 0.1,

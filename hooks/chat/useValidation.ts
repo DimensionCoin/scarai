@@ -1,15 +1,12 @@
-import { hasEnoughCredits, deductCredits } from "@/actions/user.actions";
-import { NextResponse } from "next/server";
+import { hasEnoughCredits } from "@/actions/user.actions";
 
 export async function useValidation(userId: string, message: string) {
   if (!userId || !message) {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+    return { error: "Invalid request" };
   }
   if (!(await hasEnoughCredits(userId, 2))) {
-    return NextResponse.json(
-      { error: "Insufficient credits" },
-      { status: 403 }
-    );
+    return { error: "Insufficient credits" };
   }
   return null;
 }
+

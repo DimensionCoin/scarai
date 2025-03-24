@@ -157,7 +157,7 @@ const CryptoPriceHero: React.FC = () => {
     <>
       <div className="relative w-full overflow-hidden rounded-xl border border-white/10 bg-black/20 backdrop-blur-xl shadow-lg mb-4">
         <div className="absolute inset-0 bg-gradient-to-r from-teal-500/5 via-transparent to-indigo-500/5"></div>
-        <div className="relative p-1.5 sm:p-4">
+        <div className="relative p-1.5 sm:p-1">
           <div className="flex items-center justify-between mb-2 sm:mb-3">
             <h2 className="text-xs sm:text-sm font-medium text-zinc-300">
               Live Prices

@@ -25,7 +25,7 @@ export interface CoinData {
     change7d: string;
     change14d: string;
     change30d: string;
-    change90d?: string; // Added optional 90-day change
+    change90d?: string;
   };
   marketCapRank: number;
   tickers: Array<{
@@ -38,11 +38,22 @@ export interface CoinData {
   }>;
   historical?: {
     prices: number[][];
+    volumes?: number[][]; // ✅ Add this
     summary: string;
     technicals: {
       rsi: number | null;
-      macd: { macd: number; signal: number; histogram: number } | null;
-      sma: { sma20: number } | null;
+      stochRsi?: number | null;
+      macd: {
+        macd: number;
+        signal: number;
+        histogram: number;
+        isRising: boolean;
+        crossover: "bullish" | "bearish" | null;
+      } | null;
+      sma: {
+        sma20: number;
+      } | null;
+      volumeSupport?: boolean;
     };
     extended?: {
       volatility: number | null;

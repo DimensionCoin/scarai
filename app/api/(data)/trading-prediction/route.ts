@@ -7,8 +7,8 @@ import NodeCache from "node-cache";
 // Removed Sentiment import since it's unused
 
 const client = new OpenAI({
-  apiKey: process.env.GROK_API_KEY,
-  baseURL: "https://api.x.ai/v1",
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: "https://api.deepseek.com",
 });
 const cache = new NodeCache({ stdTTL: 86400, checkperiod: 120 });
 // Removed sentimentAnalyzer since Grok handles sentiment
@@ -217,7 +217,7 @@ export async function GET(request: Request) {
     `;
 
     const predictionResponse = await client.chat.completions.create({
-      model: "grok-beta",
+      model: "deepseek-chat",
       messages: [{ role: "user", content: predictionPrompt }],
       max_tokens: 100,
       temperature: 0.1,

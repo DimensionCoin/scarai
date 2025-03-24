@@ -37,7 +37,9 @@ export async function processChatRequest({
 }) {
   // ✅ Step 1: Validate
   const validationError = await useValidation(userId, message);
-  if (validationError) return validationError;
+  if (validationError) {
+    return `❌ Error: ${validationError.error}`;
+  }
 
   // ✅ Step 2: Parse Prompt
   const parsedPrompt = await usePromptParser(message, chatHistory);
