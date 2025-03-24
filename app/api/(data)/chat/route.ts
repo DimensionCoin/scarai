@@ -1,13 +1,14 @@
-import { NextResponse } from "next/server";
-import { processChatRequest } from "@/services/chatService";
+import { processChatRequestStream } from "@/services/chatService";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const response = await processChatRequest(body);
-    return NextResponse.json({ response });
+    const response = await processChatRequestStream(body);
+
+    // ✅ Return stream directly instead of wrapping it in NextResponse.json
+    return response;
   } catch (error) {
     console.error("API Error:", error);
-    return NextResponse.json({ error: "Chat failed" }, { status: 500 });
+    return new Response("⚠️ Chat failed", { status: 500 });
   }
 }

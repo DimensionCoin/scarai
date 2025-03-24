@@ -1,85 +1,85 @@
-"use client";
+"use client"
 
-import type React from "react";
+import type React from "react"
 
-import { useEffect, useState, useRef, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
-import { GiCrystalBall } from "react-icons/gi";
-import { useUserContext } from "@/providers/UserProvider";
-import { useUser } from "@clerk/nextjs";
-import { Send, X, Search } from "lucide-react";
-import Image from "next/image";
+import { useEffect, useState, useRef, type ReactNode } from "react"
+import { usePathname } from "next/navigation"
+import { GiCrystalBall } from "react-icons/gi"
+import { useUserContext } from "@/providers/UserProvider"
+import { useUser } from "@clerk/nextjs"
+import { Send, X, Search } from "lucide-react"
+import Image from "next/image"
 
 // Cryptocurrency interface
 interface Cryptocurrency {
-  id: string;
-  name: string;
-  symbol: string;
-  image: string;
+  id: string
+  name: string
+  symbol: string
+  image: string
 }
 
 interface OracleButtonProps {
-  children: ReactNode;
+  children: ReactNode
 }
 
 interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
+  role: "user" | "assistant"
+  content: string
+  timestamp: Date
 }
 
 export default function OracleButton({ children }: OracleButtonProps) {
-  const [isScrolling, setIsScrolling] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [isScrolling, setIsScrolling] = useState(false)
+  const [isHovering, setIsHovering] = useState(false)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [input, setInput] = useState("")
+  const [loading, setLoading] = useState(false)
 
   // Coin search state
-  const [showCoinDropdown, setShowCoinDropdown] = useState(false);
-  const [coinSearchQuery, setCoinSearchQuery] = useState("");
-  const [coinResults, setcoinResults] = useState<Cryptocurrency[]>([]);
-  const [coinSearchLoading, setCoinSearchLoading] = useState(false);
-  const [cursorPosition, setCursorPosition] = useState(0);
+  const [showCoinDropdown, setShowCoinDropdown] = useState(false)
+  const [coinSearchQuery, setCoinSearchQuery] = useState("")
+  const [coinResults, setcoinResults] = useState<Cryptocurrency[]>([])
+  const [coinSearchLoading, setCoinSearchLoading] = useState(false)
+  const [cursorPosition, setCursorPosition] = useState(0)
   // Change the variable name from dollarSignIndex to slashIndex for clarity
-  const [slashIndex, setSlashIndex] = useState(-1);
+  const [slashIndex, setSlashIndex] = useState(-1)
 
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const pathname = usePathname();
-  const { refreshUser } = useUserContext();
-  const { user } = useUser();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const pathname = usePathname()
+  const { refreshUser } = useUserContext()
+  const { user } = useUser()
 
   // Focus input when modal opens
   useEffect(() => {
     if (isModalOpen && inputRef.current) {
       setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
+        inputRef.current?.focus()
+      }, 100)
     }
-  }, [isModalOpen]);
+  }, [isModalOpen])
 
   // Scroll handling for button animation
   useEffect(() => {
     const handleScroll = () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      setIsScrolling(true);
-      timeoutRef.current = setTimeout(() => setIsScrolling(false), 2000);
-    };
-    window.addEventListener("scroll", handleScroll);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      setIsScrolling(true)
+      timeoutRef.current = setTimeout(() => setIsScrolling(false), 2000)
+    }
+    window.addEventListener("scroll", handleScroll)
     return () => {
-      window.removeEventListener("scroll", handleScroll);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
+      window.removeEventListener("scroll", handleScroll)
+      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+    }
+  }, [])
 
   // Auto-scroll to latest message
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
 
   // Handle clicks outside the coin dropdown
   useEffect(() => {
@@ -90,46 +90,44 @@ export default function OracleButton({ children }: OracleButtonProps) {
         inputRef.current &&
         !inputRef.current.contains(event.target as Node)
       ) {
-        setShowCoinDropdown(false);
+        setShowCoinDropdown(false)
       }
-    };
+    }
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside)
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
 
   // Fetch coin results when search query changes
   useEffect(() => {
     if (!coinSearchQuery.trim()) {
-      setcoinResults([]);
-      return;
+      setcoinResults([])
+      return
     }
 
     const fetchResults = async () => {
-      setCoinSearchLoading(true);
+      setCoinSearchLoading(true)
       try {
-        const response = await fetch(
-          `/api/coinlist?query=${encodeURIComponent(coinSearchQuery)}`
-        );
+        const response = await fetch(`/api/coinlist?query=${encodeURIComponent(coinSearchQuery)}`)
         if (response.ok) {
-          const data = await response.json();
-          setcoinResults(data.slice(0, 5)); // Limit to 5 results for better UX in chat
+          const data = await response.json()
+          setcoinResults(data.slice(0, 5)) // Limit to 5 results for better UX in chat
         }
       } catch (error) {
-        console.error("Error fetching coin search results:", error);
+        console.error("Error fetching coin search results:", error)
       } finally {
-        setCoinSearchLoading(false);
+        setCoinSearchLoading(false)
       }
-    };
+    }
 
     const timer = setTimeout(() => {
-      fetchResults();
-    }, 300);
+      fetchResults()
+    }, 300)
 
-    return () => clearTimeout(timer);
-  }, [coinSearchQuery]);
+    return () => clearTimeout(timer)
+  }, [coinSearchQuery])
 
   // API call to /api/chat matching original logic
   const sendMessage = async () => {
@@ -137,11 +135,12 @@ export default function OracleButton({ children }: OracleButtonProps) {
 
     setShowCoinDropdown(false);
 
-    const userMessage = {
+    const userMessage: ChatMessage = {
       role: "user" as const,
       content: input,
       timestamp: new Date(),
     };
+
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
@@ -151,35 +150,62 @@ export default function OracleButton({ children }: OracleButtonProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: user?.id, // Use Clerk's user ID
+          userId: user?.id,
           message: input,
           chatHistory: messages,
         }),
       });
 
-      const data = await response.json();
-
-      if (response.ok && data.response) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant" as const,
-            content: data.response,
-            timestamp: new Date(),
-          },
-        ]);
-        refreshUser(); // Refresh user data (e.g., credits)
-      } else {
-        throw new Error(data.error || "Invalid response from server");
+      if (!response.ok || !response.body) {
+        const errorText = await response.text();
+        throw new Error(
+          `Invalid streaming response (Status ${response.status}): ${errorText}`
+        );
       }
-    } catch (error: unknown) {
-      console.error("Error sending message:", error);
 
-      let errorMessage = "Something went wrong. Please try again.";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let assistantMessage = "";
+
+      // Initial placeholder assistant message
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant" as const, content: "", timestamp: new Date() },
+      ]);
+
+      const updateMessage = (content: string) => {
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content,
+          };
+          return updated;
+        });
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        if (!assistantMessage && chunk) {
+          // First token received, stop loading indicator
+          setLoading(false);
+        }
+
+        assistantMessage += chunk;
+        updateMessage(assistantMessage);
+      }
+
+
+      refreshUser(); // Update credits
+    } catch (error: unknown) {
+      console.error("Error streaming response:", error);
+      let errorMessage = "⚠️ Something went wrong while loading the response.";
+
+      if (error instanceof Error && error.message) {
+        errorMessage += `\n\n${error.message}`;
       }
 
       setMessages((prev) => [
@@ -195,88 +221,86 @@ export default function OracleButton({ children }: OracleButtonProps) {
     }
   };
 
+
   // In the handleInputChange function, replace the $ symbol check with / symbol check
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setInput(newValue);
+    const newValue = e.target.value
+    setInput(newValue)
 
     // Get cursor position
-    const cursorPos = e.target.selectionStart || 0;
-    setCursorPosition(cursorPos);
+    const cursorPos = e.target.selectionStart || 0
+    setCursorPosition(cursorPos)
 
     // Check if the user just typed a / character
-    const lastSlashIndex = newValue.lastIndexOf("/", cursorPos);
+    const lastSlashIndex = newValue.lastIndexOf("/", cursorPos)
 
-    if (
-      lastSlashIndex !== -1 &&
-      (lastSlashIndex === 0 || newValue[lastSlashIndex - 1] === " ")
-    ) {
+    if (lastSlashIndex !== -1 && (lastSlashIndex === 0 || newValue[lastSlashIndex - 1] === " ")) {
       // Extract the partial coin name after the / symbol
-      const partialCoin = newValue.substring(lastSlashIndex + 1, cursorPos);
+      const partialCoin = newValue.substring(lastSlashIndex + 1, cursorPos)
 
       // Check if there's a space after the partial coin name
-      const hasSpaceAfter = partialCoin.includes(" ");
+      const hasSpaceAfter = partialCoin.includes(" ")
 
       // Only show dropdown and search if we have a / followed by some text without a space
       if (partialCoin !== "" && !hasSpaceAfter) {
-        setSlashIndex(lastSlashIndex);
-        setCoinSearchQuery(partialCoin);
-        setShowCoinDropdown(true);
+        setSlashIndex(lastSlashIndex)
+        setCoinSearchQuery(partialCoin)
+        setShowCoinDropdown(true)
       } else if (lastSlashIndex === cursorPos - 1) {
         // Just the / was typed, show all coins
-        setSlashIndex(lastSlashIndex);
-        setCoinSearchQuery("");
-        setShowCoinDropdown(true);
+        setSlashIndex(lastSlashIndex)
+        setCoinSearchQuery("")
+        setShowCoinDropdown(true)
       } else {
-        setShowCoinDropdown(false);
+        setShowCoinDropdown(false)
       }
     } else {
-      setShowCoinDropdown(false);
+      setShowCoinDropdown(false)
     }
-  };
+  }
 
   // Update the handleCoinSelect function to keep the / and add a space after the coin ID
   const handleCoinSelect = (coinId: string) => {
     // Find the selected coin
-    const selectedCoin = coinResults.find((coin) => coin.id === coinId);
-    if (!selectedCoin) return;
+    const selectedCoin = coinResults.find((coin) => coin.id === coinId)
+    if (!selectedCoin) return
 
     // Replace the partial coin name with the full coin id
     if (slashIndex !== -1) {
-      const beforeSlash = input.substring(0, slashIndex);
-      const afterPartialCoin = input.substring(cursorPosition);
+      const beforeSlash = input.substring(0, slashIndex)
+      const afterPartialCoin = input.substring(cursorPosition)
 
       // Set the new input value with the selected coin, keeping the / and adding a space
-      const newInput = `${beforeSlash}/${selectedCoin.id} ${afterPartialCoin}`;
-      setInput(newInput);
+      const newInput = `${beforeSlash}/${selectedCoin.id} ${afterPartialCoin}`
+      setInput(newInput)
 
       // Set cursor position after the inserted coin name and the space
       setTimeout(() => {
         if (inputRef.current) {
-          const newPosition = slashIndex + selectedCoin.id.length + 2; // +1 for the / sign and +1 for the space
-          inputRef.current.setSelectionRange(newPosition, newPosition);
-          inputRef.current.focus();
+          const newPosition = slashIndex + selectedCoin.id.length + 2 // +1 for the / sign and +1 for the space
+          inputRef.current.setSelectionRange(newPosition, newPosition)
+          inputRef.current.focus()
         }
-      }, 0);
+      }, 0)
     }
 
     // Explicitly close the dropdown
-    setShowCoinDropdown(false);
-  };
+    setShowCoinDropdown(false)
+  }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+      e.preventDefault()
       if (showCoinDropdown && coinResults.length > 0) {
         // Select the first coin if dropdown is open
-        handleCoinSelect(coinResults[0].id);
+        handleCoinSelect(coinResults[0].id)
       } else {
-        sendMessage();
+        sendMessage()
       }
     } else if (e.key === "Escape") {
-      setShowCoinDropdown(false);
+      setShowCoinDropdown(false)
     }
-  };
+  }
 
   return (
     <div className="relative">
@@ -298,9 +322,7 @@ export default function OracleButton({ children }: OracleButtonProps) {
             <div className="absolute -inset-1 bg-gradient-to-r from-teal-500/40 to-indigo-500/40 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div
               className={`relative flex items-center justify-center h-12 w-12 rounded-full border border-white/15 backdrop-blur-xl transition-all duration-300 ${
-                isScrolling || isHovering
-                  ? "bg-black/30 border-teal-500/30"
-                  : "bg-black/20 border-white/10"
+                isScrolling || isHovering ? "bg-black/30 border-teal-500/30" : "bg-black/20 border-white/10"
               }`}
             >
               <div className="relative">
@@ -310,9 +332,7 @@ export default function OracleButton({ children }: OracleButtonProps) {
                 <GiCrystalBall
                   size={24}
                   className={`transition-colors duration-300 ${
-                    isScrolling || isHovering
-                      ? "text-teal-400"
-                      : "text-zinc-300"
+                    isScrolling || isHovering ? "text-teal-400" : "text-zinc-300"
                   }`}
                 />
               </div>
@@ -323,10 +343,7 @@ export default function OracleButton({ children }: OracleButtonProps) {
           {isModalOpen && (
             <>
               {/* Backdrop */}
-              <div
-                className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm"
-                onClick={() => setIsModalOpen(false)}
-              />
+              <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
 
               {/* Modal - Improved for mobile */}
               <div className="fixed inset-0 sm:inset-4 md:inset-8 z-50 flex items-center justify-center">
@@ -344,14 +361,9 @@ export default function OracleButton({ children }: OracleButtonProps) {
                       <div className="flex items-center gap-2">
                         <div className="relative">
                           <div className="absolute -inset-1 rounded-full bg-teal-400/20 blur-sm"></div>
-                          <GiCrystalBall
-                            size={24}
-                            className="text-teal-400 relative"
-                          />
+                          <GiCrystalBall size={24} className="text-teal-400 relative" />
                         </div>
-                        <h2 className="text-lg sm:text-xl font-medium text-white">
-                          Oracle AI Assistant
-                        </h2>
+                        <h2 className="text-lg sm:text-xl font-medium text-white">Oracle AI Assistant</h2>
                       </div>
                       <button
                         onClick={() => setIsModalOpen(false)}
@@ -367,14 +379,10 @@ export default function OracleButton({ children }: OracleButtonProps) {
                         <div className="flex flex-col items-center justify-center h-full text-center space-y-4 px-2">
                           <div className="relative">
                             <div className="absolute -inset-4 rounded-full bg-teal-400/10 blur-md animate-pulse"></div>
-                            <GiCrystalBall
-                              size={48}
-                              className="text-teal-400 relative"
-                            />
+                            <GiCrystalBall size={48} className="text-teal-400 relative" />
                           </div>
                           <p className="text-zinc-300 max-w-md">
-                            Ask me anything about crypto markets, trading
-                            strategies, or technical analysis.
+                            Ask me anything about crypto markets, trading strategies, or technical analysis.
                           </p>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 w-full max-w-md">
                             {[
@@ -386,8 +394,8 @@ export default function OracleButton({ children }: OracleButtonProps) {
                               <button
                                 key={suggestion}
                                 onClick={() => {
-                                  setInput(suggestion);
-                                  inputRef.current?.focus();
+                                  setInput(suggestion)
+                                  inputRef.current?.focus()
                                 }}
                                 className="p-2 text-sm text-left rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 hover:border-teal-500/30 transition-colors text-zinc-300"
                               >
@@ -400,11 +408,7 @@ export default function OracleButton({ children }: OracleButtonProps) {
                         messages.map((msg, index) => (
                           <div
                             key={index}
-                            className={`mb-4 flex ${
-                              msg.role === "user"
-                                ? "justify-end"
-                                : "justify-start"
-                            }`}
+                            className={`mb-4 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                           >
                             <div
                               className={`max-w-[85%] sm:max-w-[80%] ${
@@ -413,9 +417,7 @@ export default function OracleButton({ children }: OracleButtonProps) {
                                   : "bg-white/10 text-zinc-100 border border-white/10"
                               } rounded-2xl px-4 py-3 shadow-lg`}
                             >
-                              <p className="whitespace-pre-wrap text-sm sm:text-base">
-                                {msg.content}
-                              </p>
+                              <p className="whitespace-pre-wrap text-sm sm:text-base">{msg.content}</p>
                               <span className="block text-xs opacity-60 mt-1">
                                 {msg.timestamp.toLocaleTimeString([], {
                                   hour: "2-digit",
@@ -492,18 +494,14 @@ export default function OracleButton({ children }: OracleButtonProps) {
                             <div className="p-2 border-b border-white/10 flex items-center gap-2">
                               <Search className="h-3.5 w-3.5 text-teal-400" />
                               <span className="text-xs text-zinc-400">
-                                {coinSearchQuery
-                                  ? `Searching for "${coinSearchQuery}"`
-                                  : "Select a cryptocurrency"}
+                                {coinSearchQuery ? `Searching for "${coinSearchQuery}"` : "Select a cryptocurrency"}
                               </span>
                             </div>
 
                             {coinSearchLoading ? (
                               <div className="p-4 text-center">
                                 <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-teal-400"></div>
-                                <p className="text-xs text-zinc-400 mt-1">
-                                  Searching...
-                                </p>
+                                <p className="text-xs text-zinc-400 mt-1">Searching...</p>
                               </div>
                             ) : coinResults.length > 0 ? (
                               <div className="max-h-60 overflow-y-auto">
@@ -515,9 +513,7 @@ export default function OracleButton({ children }: OracleButtonProps) {
                                   >
                                     <div className="h-6 w-6 rounded-full bg-zinc-800/50 flex items-center justify-center overflow-hidden">
                                       <Image
-                                        src={
-                                          crypto.image || "/default-coin.png"
-                                        }
+                                        src={crypto.image || "/default-coin.png"}
                                         alt={`${crypto.name} logo`}
                                         width={16}
                                         height={16}
@@ -526,13 +522,9 @@ export default function OracleButton({ children }: OracleButtonProps) {
                                       />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-zinc-100 truncate">
-                                        {crypto.name}
-                                      </p>
+                                      <p className="text-sm font-medium text-zinc-100 truncate">{crypto.name}</p>
                                       <p className="text-xs text-zinc-500">
-                                        ${crypto.id}{" "}
-                                        <span className="opacity-50">•</span>{" "}
-                                        {crypto.symbol.toUpperCase()}
+                                        ${crypto.id} <span className="opacity-50">•</span> {crypto.symbol.toUpperCase()}
                                       </p>
                                     </div>
                                   </button>
@@ -540,15 +532,11 @@ export default function OracleButton({ children }: OracleButtonProps) {
                               </div>
                             ) : coinSearchQuery ? (
                               <div className="p-4 text-center">
-                                <p className="text-sm text-zinc-400">
-                                  No results found
-                                </p>
+                                <p className="text-sm text-zinc-400">No results found</p>
                               </div>
                             ) : (
                               <div className="p-4 text-center">
-                                <p className="text-sm text-zinc-400">
-                                  Type to search for cryptocurrencies
-                                </p>
+                                <p className="text-sm text-zinc-400">Type to search for cryptocurrencies</p>
                               </div>
                             )}
                           </div>
@@ -563,5 +551,6 @@ export default function OracleButton({ children }: OracleButtonProps) {
         </>
       )}
     </div>
-  );
+  )
 }
+

@@ -23,7 +23,6 @@ import { UserButton } from "@clerk/nextjs";
 import { useUserContext } from "@/providers/UserProvider";
 import { useUser } from "@clerk/nextjs";
 import LavaLampEffect from "@/components/shared/LavaLampEffect";
-import TradingRecommendation from "@/components/shared/TradingRecommendation";
 
 // Cryptocurrency interface
 interface Cryptocurrency {
@@ -46,11 +45,8 @@ const exampleQueries = [
   "Proof of work vs proof of stake?",
   "How to evaluate crypto projects?",
   "Crypto investing risks?",
-  "How is /solana performing today",
-  "/bitcoin",
-  "How would you trade /hyperliquid today?",
-  "How are the markets looking today?",
-  "Break down /solana price performance",
+  "How is /SOL performing today",
+  "has @ansem said anything about meme coins",
 ];
 
 // Icons for the example queries
@@ -168,7 +164,7 @@ export default function ChatPage() {
     setShowCoinDropdown(false);
 
     const userMessage = { role: "user", content: input, timestamp: new Date() };
-    setMessages([...messages, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setLoading(true);
 
@@ -183,81 +179,71 @@ export default function ChatPage() {
         }),
       });
 
-      // Check if response is ok first
-      if (!response.ok) {
-        // Get error message from response - clone it first to avoid "body already read" error
-        const clonedResponse = response.clone();
-        let errorText;
-
-        try {
-          // Try to parse as JSON first
-          const errorData = await clonedResponse.json();
-          errorText =
-            errorData.error ||
-            `Error: ${response.status} ${response.statusText}`;
-        } catch {
-          // If JSON parsing fails, get text content from original response
-          errorText = await response.text();
-          // Limit error text length
-          errorText =
-            errorText.length > 150
-              ? errorText.substring(0, 150) + "..."
-              : errorText;
-        }
-        throw new Error(errorText);
+      if (!response.ok || !response.body) {
+        const errorText = await response.text();
+        throw new Error(
+          `Invalid streaming response (Status ${response.status}): ${errorText}`
+        );
       }
 
-      // For successful responses, try to parse as JSON or text
-      let responseContent;
-      const clonedResponse = response.clone();
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let assistantMessage = "";
 
-      try {
-        // Try to parse as JSON first
-        const data = await clonedResponse.json();
-        if (data.response) {
-          responseContent = data.response;
-        } else {
-          throw new Error(data.error || "Invalid response format from server");
-        }
-      } catch {
-        // If JSON parsing fails, try to get text content
-        try {
-          responseContent = await response.text();
-        } catch (textError) {
-          console.error("Error reading response as text:", textError);
-          throw new Error("Failed to read server response");
-        }
-      }
-
-      // Add the response to messages
-      setMessages([
-        ...messages,
-        userMessage,
-        {
-          role: "assistant",
-          content: responseContent,
-          timestamp: new Date(),
-        },
+      // Placeholder message for streaming output
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "", timestamp: new Date() },
       ]);
 
-      refreshUser();
-    } catch (error: unknown) {
-      console.error("Error sending message:", error);
-      let errorMessage = "Something went wrong. Please try again.";
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === "string") {
-        errorMessage = error;
+      const updateMessage = (content: string) => {
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            content,
+          };
+          return updated;
+        });
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        if (!assistantMessage && chunk) {
+          // First token received, stop loading indicator
+          setLoading(false);
+        }
+
+        assistantMessage += chunk;
+        updateMessage(assistantMessage);
       }
-      setMessages([
-        ...messages,
-        userMessage,
-        { role: "assistant", content: errorMessage, timestamp: new Date() },
+
+
+      refreshUser(); // ✅ Update credit count after success
+    } catch (error: unknown) {
+      console.error("Error streaming response:", error);
+      let errorMessage = "⚠️ Something went wrong while loading the response.";
+
+      if (error instanceof Error && error.message) {
+        errorMessage += `\n\n${error.message}`;
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: errorMessage,
+          timestamp: new Date(),
+        },
       ]);
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -370,13 +356,11 @@ export default function ChatPage() {
                           : "bg-black/10 backdrop-blur-md rounded-xl border border-white/10 p-3"
                       }`}
                     >
-                      {msg.role === "assistant" ? (
-                        <TradingRecommendation content={msg.content} />
-                      ) : (
-                        <p className="text-zinc-100 whitespace-pre-wrap text-xs sm:text-sm">
-                          {msg.content}
-                        </p>
-                      )}
+                      <p className="text-zinc-100 whitespace-pre-wrap text-xs sm:text-sm">
+                        {typeof msg.content === "string"
+                          ? msg.content
+                          : JSON.stringify(msg.content)}
+                      </p>
                     </div>
                     <div className="mt-1 text-[9px] text-zinc-500 flex items-center gap-1">
                       <Clock className="h-2 w-2" />
