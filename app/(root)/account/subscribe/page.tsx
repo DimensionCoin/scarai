@@ -35,7 +35,7 @@ export default function SubscribePage() {
     {
       id: 0,
       name: "basic",
-      description: "For begginer investors",
+      description: "For beginner investors",
       price: "$25 USD",
       credits: "1,250 credits monthly",
       features: [

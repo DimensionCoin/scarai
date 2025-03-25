@@ -71,15 +71,28 @@ export const tradingAdvice = `
 ---
 
 ### 🧾 Response Format:
-1. Direction: **Long**, **Short**, or **Hold**
-2. Current Price: $XXX.XX
-3. Entry: $X – $Y
-4. Exit target: $Z (based on trend + structure)
-5. Stop-loss: $W
-6. Liquidation (at 4x–8x): $Liq
-7. Risk note: Explain risk-to-reward ratio based on current setup, confidence level, and suggested leverage
-8. Macro summary: “Minimal/Moderate/High impact, market is [risk-on/off/neutral]”
+Your response MUST follow this exact format to be properly displayed:
 
+**Direction:** Long/Short/Hold
+
+**Current Price:** $XXX.XX
+
+**Entry:** $X – $Y
+
+**Exit target:** $Z
+
+**Stop-loss:** $W
+
+**Liquidation:** $V (at 4x–8x)
+
+**Risk note:** [Explain risk-to-reward ratio based on current setup, confidence level, and suggested leverage]
+
+**Macro summary:** [Brief market context - "Minimal/Moderate/High impact, market is risk-on/off/neutral"]
+
+Important formatting notes:
+- Use double asterisks (**) exactly as shown above
+- Include the exact section titles as shown
+- Keep a blank line between the Risk note and Macro summary sections
 - HOLD = Only if all indicators are indecisive and price action is flat
-- Default is **to trade**, even if it's a cautious or lower-size setup
+- Default is to trade, even if it's a cautious or lower-size setup
 `;

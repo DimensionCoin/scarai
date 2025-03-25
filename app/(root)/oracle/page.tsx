@@ -466,8 +466,7 @@ export default function ChatPage() {
                   for coin data (e.g.,{" "}
                   <span className="font-medium">/hedera-hashgraph</span>,{" "}
                   <span className="font-medium">/the-open-network</span>,{" "}
-                  <span className="font-medium">/solana</span>
-                  )
+                  <span className="font-medium">/solana</span>)
                 </p>
               </div>
             </div>

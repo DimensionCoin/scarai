@@ -13,7 +13,6 @@ import {
   LayoutDashboard,
   Search,
   Newspaper,
-  
   CoinsIcon,
 } from "lucide-react";
 import { GiCrystalBall } from "react-icons/gi";
@@ -111,20 +110,26 @@ const Header = () => {
         {/* Content */}
         <div className="relative z-10 flex justify-between items-center w-full">
           {/* Left side - Logo/Menu */}
-          <div className="flex items-center ">
-            {/* Logo that toggles mobile menu on small screens */}
+          <div className="flex items-center">
+            {/* Logo area that toggles mobile menu on small screens */}
             <button
-              className="relative group focus:outline-none"
+              className="relative group focus:outline-none flex items-center gap-2 md:gap-3"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
-              <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-teal-400/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity blur-sm"></div>
-              <div className="h-14 w-14 rounded-full flex items-center justify-center overflow-hidden ">
+              <div className="absolute -inset-2 rounded-xl bg-gradient-to-r from-teal-400/20 to-indigo-500/20 opacity-0 group-hover:opacity-100 transition-opacity blur-sm"></div>
+              <div className="h-14 w-14 rounded-full flex items-center justify-center overflow-hidden">
                 <LavaLampEffect />
               </div>
+              <h2 className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-teal-400 via-cyan-400 to-violet-500 tracking-wide">
+                SCAR
+              </h2>
+              {/* Down arrow indicator (only visible on mobile) */}
+              <ChevronDown
+                className={`h-4 w-4 text-teal-400 md:hidden transition-transform duration-300 ${
+                  mobileMenuOpen ? "rotate-180" : ""
+                }`}
+              />
             </button>
-            <h2 className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-teal-400 via-cyan-400 to-violet-500 tracking-wide">
-              SCAR
-            </h2>
           </div>
 
           {/* Right side - User controls */}
