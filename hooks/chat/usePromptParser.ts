@@ -1,11 +1,26 @@
 import OpenAI from "openai";
 import { ChatMessage } from "@/types/chat";
 import { matchCategoryFromQuery } from "@/utils/matchCategory";
+import { ChatIntent } from "@/types/ChatIntent";
+
+const VALID_INTENTS: ChatIntent[] = [
+  "coin_data",
+  "trading_advice",
+  "investment_strategy",
+  "category_coins",
+  "top_coin_data",
+  "market_trends",
+  "technical_analysis",
+  "compare",
+  "explain_concept",
+  "x_posts",
+  "mixed",
+  "unknown",
+];
 
 function extractEntities(message: string) {
   const coins = message.match(/\/[a-zA-Z0-9-]+/g) || [];
   const users = message.match(/@[a-zA-Z0-9_]+/g) || [];
-
   return {
     coins: [...new Set(coins.map((c) => c.toLowerCase()))],
     users: [...new Set(users.map((u) => u.toLowerCase()))],
@@ -22,12 +37,12 @@ export async function usePromptParser(
   message: string,
   chatHistory: ChatMessage[] = []
 ): Promise<{
-  intent: string;
+  intent: ChatIntent;
   entities: {
     coins: string[];
     users: string[];
     category?: string;
-    count?: number; 
+    count?: number;
   };
   context: string;
 }> {
@@ -44,162 +59,46 @@ export async function usePromptParser(
       .map((m) => `${m.role}: ${m.content}`)
       .join("\n") || "No prior context";
 
-  const isFollowUp = /^(he|she|they|it|that|what about|what is it|okay)$/i.test(
-    message.trim()
-  );
-
-  // ✅ Extract count (e.g., "top 25 gaming coins")
   const amountMatch = message.match(/top\s+(\d{1,3})/i);
   const count = amountMatch ? parseInt(amountMatch[1], 10) : undefined;
 
-  // ✅ Handle category queries
-  const matchedCategory = matchCategoryFromQuery(message);
-  if (matchedCategory) {
-    return {
-      intent: "category_coins",
-      entities: {
-        coins,
-        users,
-        category: matchedCategory.category_id,
-        ...(count ? { count } : {}),
-      },
-      context: `User is asking about top ${count ?? 10} coins in the ${
-        matchedCategory.name
-      } category`,
-    };
-  }
+  const categoryMatch = matchCategoryFromQuery(message);
 
-  if (
-    /\b(enter|entry|exit|stop-loss|long|short|tp|sl|target|levels|liquidation)\b/i.test(
-      message
-    )
-  ) {
-    return {
-      intent: "trading_advice",
-      entities: { coins, users },
-      context: "User is requesting trading advice for one or more coins",
-    };
-  }
-
-  // ✅ Fallback for "top coins" generally
-  if (/top (coins|tokens|cryptos)/i.test(message)) {
-    return {
-      intent: "top_coin_data",
-      entities: { coins, users, ...(count ? { count } : {}) },
-      context: `User is asking for the top ${count ?? 10} coins by market cap`,
-    };
-  }
-  // ✅ Fallback for "top coins" when no category is specified
-  if (/top (coins|tokens|cryptos)/i.test(message)) {
-    return {
-      intent: "top_coin_data",
-      entities: { coins, users },
-      context: "User is asking for the top coins by market cap",
-    };
-  }
-  if (/what\s+is\s+\/\w+/i.test(message)) {
-    return {
-      intent: "explain_concept",
-      entities: { coins, users },
-      context: `User is asking for a beginner-friendly explanation of ${coins[0]}`,
-    };
-  }
-
-  if (coins.length >= 2) {
-    return {
-      intent: "compare",
-      entities: { coins, users },
-      context: `User is comparing ${coins.join(" vs ")}`,
-    };
-  }
-
-  if (/\b(price|pumping|up|down|moving)\b/i.test(message) && coins.length > 0) {
-    return {
-      intent: "coin_data",
-      entities: { coins, users },
-      context: `User is asking for recent price movement or trends for ${coins[0]}`,
-    };
-  }
-
-
-  // ✅ Handle follow-up messages
-  if (
-    isFollowUp &&
-    (lastUserMsg.includes("/") || lastUserMsg.includes("@")) &&
-    coins.length === 0 &&
-    users.length === 0
-  ) {
-    const previousEntities = extractEntities(lastUserMsg);
-    const fallbackIntent = previousEntities.users.length
-      ? "x_posts"
-      : previousEntities.coins.length
-      ? "coin_data"
-      : "unknown";
-
-    return {
-      intent: fallbackIntent,
-      entities: {
-        coins: [...new Set([...coins, ...previousEntities.coins])],
-        users: [...new Set([...users, ...previousEntities.users])],
-      },
-      context: `Continuing conversation about ${
-        previousEntities.coins[0] ||
-        previousEntities.users[0] ||
-        "unknown topic"
-      }`,
-    };
-  }
-
-  // 🔮 GPT fallback parser
   const systemPrompt = `
 You are a crypto AI prompt parser. Given a user message and recent context, return ONLY a valid JSON string with:
-- intent: one of: "coin_data", "trading_advice", "investment_advice", "x_posts", "compare", "mixed", "explain_concept", "market_trends", "top_coin_data", "category_coins", "unknown"
-- entities: { coins: ["/coin1"], users: ["@user1"], category?: "category_id" }
+- intent: one of ${VALID_INTENTS.map((i) => `"${i}"`).join(", ")}
+- entities: { coins: ["/coin1"], users: ["@user1"], category?: "category_id", count?: number }
 - context: a short, clear summary of what the user wants
 
-### Rules:
-- "/coin" alone → intent: "coin_data"
-- "what is /coin" → intent: "explain_concept"
-- "should I buy /coin", "hold /coin" → intent: "investment_advice"
-- "entry", "levels", "target" → intent: "trading_advice"
-- "@user" alone → intent: "x_posts"
-- "/coin vs /coin2", "@user1 vs @user2" → intent: "compare"
-- "/coin @user" → intent: "mixed"
-- "how is the market", "risk on", "macro", "yields" → intent: "market_trends"
-- "top coins", "top cryptos", "top tokens" → intent: "top_coin_data"
-- "top RWA coins", "best AI tokens", "popular DePIN projects" → intent: "category_coins"
+### Examples:
+- "how to read the RSI indicator?" → "technical_analysis"
+- "entry & stop loss for /solana" → "trading_advice"
+- "top 25 gaming coins" → "category_coins"
+- "how's the market today?" → "market_trends"
 
-Input:
-Message: "${message}"
-Last messages:
+Input Message:
+"${message}"
+
+Recent Context:
 ${fullHistory}
 
-⚠️ Return valid JSON only. No markdown, comments, or extra text.
+Return only valid JSON with no extra text.
 `;
 
   try {
     const completion = await client.chat.completions.create({
       model: "deepseek-chat",
       messages: [{ role: "system", content: systemPrompt }],
-      max_tokens: 150,
+      max_tokens: 200,
       temperature: 0.1,
     });
 
-    const raw = completion.choices[0]?.message?.content || "{}";
+    const raw = completion.choices?.[0]?.message?.content || "{}";
     const cleaned = raw
-     .replace(/```(json)?/gi, "")
-     .replace(/^.*?{/, "{")
-     .replace(/\n/g, "")
-     .trim();
-
-    if (!cleaned.startsWith("{") || !cleaned.includes("intent")) {
-      console.error("❌ Grok returned invalid JSON:", cleaned);
-      return {
-        intent: "unknown",
-        entities: { coins: [], users: [] },
-        context: "Grok returned unstructured data — try again",
-      };
-    }
+      .replace(/```(json)?/gi, "")
+      .replace(/^.*?{/, "{")
+      .replace(/\n/g, "")
+      .trim();
 
     function coerceToValidJSON(input: string): string {
       return input
@@ -208,21 +107,16 @@ ${fullHistory}
         .replace(/:\s*([^,"{}\[\]\s]+)/g, ': "$1"');
     }
 
-    let parsed;
+    let parsed: any;
     try {
       parsed = JSON.parse(cleaned);
     } catch {
-      try {
-        parsed = JSON.parse(coerceToValidJSON(cleaned));
-      } catch (e) {
-        console.error("❌ Could not parse fallback JSON:", cleaned);
-        return {
-          intent: "unknown",
-          entities: { coins: [], users: [] },
-          context: "Invalid fallback parser format",
-        };
-      }
+      parsed = JSON.parse(coerceToValidJSON(cleaned));
     }
+
+    const parsedIntent = VALID_INTENTS.includes(parsed.intent)
+      ? parsed.intent
+      : "unknown";
 
     const parsedCoins =
       Array.isArray(parsed?.entities?.coins) &&
@@ -236,8 +130,14 @@ ${fullHistory}
         ? parsed.entities.users.map((u: string) => u.toLowerCase())
         : users;
 
+    // 🧼 Post-validation correction: if category intent but no match, downgrade to unknown
+    const isInvalidCategory =
+      parsedIntent === "category_coins" &&
+      !parsed.entities?.category &&
+      !categoryMatch;
+
     return {
-      intent: parsed.intent || "unknown",
+      intent: isInvalidCategory ? "unknown" : (parsedIntent as ChatIntent),
       entities: {
         coins: [...new Set(parsedCoins)],
         users: [...new Set(parsedUsers)],
@@ -246,14 +146,14 @@ ${fullHistory}
         }),
         ...(parsed.entities?.count && { count: parsed.entities.count }),
       },
-      context: parsed.context || "Unclear request",
+      context: parsed.context || "User asked a question",
     };
   } catch (error) {
-    console.error("PromptParser Error:", error);
+    console.error("❌ usePromptParser failed:", error);
     return {
       intent: "unknown",
-      entities: { coins, users },
-      context: "Failed to parse — please try again",
+      entities: { coins: [], users: [] },
+      context: "Parsing failed — try again.",
     };
   }
 }

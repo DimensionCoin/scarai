@@ -124,7 +124,7 @@ export async function processChatRequestStream({
     ],
   });
 console.log("🧠 System Prompt Sent to Grok:\n", systemPrompt);
-
+console.log(parsedPrompt)
   // Start credit deduction early
   deductCredits(userId, 2).catch(() => null);
   logCreditUsage({
