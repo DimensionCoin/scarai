@@ -10,6 +10,7 @@ import { useSystemPrompt } from "@/hooks/chat/useSystemPrompt";
 import { useTopCryptoData } from "@/hooks/chat/useTopCryptoData";
 import { matchCategoryFromQuery } from "@/utils/matchCategory";
 import { deductCredits, logCreditUsage } from "@/actions/user.actions";
+import { ChatIntent } from "@/types/ChatIntent";
 
 // Utility: fetch coins in a specific category
 async function fetchCategoryCoins(categoryId: string, count: number = 10) {
@@ -96,8 +97,10 @@ export async function processChatRequestStream({
     parsedPrompt.intent === "category_coins" ? categoryCoins : topCoins,
     matchedCategory,
     parsedPrompt.entities.count ?? 10,
-    cleanCoinData
+    cleanCoinData,
+    parsedPrompt.intent as ChatIntent // ✅ Cast safely here
   );
+
 
   const client = new OpenAI({
     apiKey: process.env.GROK_API_KEY!,
@@ -120,6 +123,7 @@ export async function processChatRequestStream({
       },
     ],
   });
+console.log("🧠 System Prompt Sent to Grok:\n", systemPrompt);
 
   // Start credit deduction early
   deductCredits(userId, 2).catch(() => null);

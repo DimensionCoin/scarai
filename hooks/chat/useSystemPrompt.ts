@@ -1,8 +1,8 @@
 import { ICryptoPlain } from "@/models/crypto.model";
 import { CoinData } from "@/types/coinData";
 import { MarketSnapshot } from "@/types/MarketSnapshot";
-import { tradingAdvice, TopCoinData, coinData, investmentStrategy, marketTrends } from "@/utils/chat/intents";
-
+import { intentInstructions } from "@/utils/chat/intents";
+import { ChatIntent } from "@/types/ChatIntent";
 
 export function useSystemPrompt(
   trendingCoins: any[],
@@ -11,7 +11,8 @@ export function useSystemPrompt(
   topCoins?: ICryptoPlain[],
   category?: { name: string; category_id: string } | null,
   count: number = 10,
-  cleanCoinData?: any
+  cleanCoinData?: any,
+  intent?: ChatIntent
 ) {
   const enrichedTrending = trendingCoins
     .map((tc) => ({
@@ -26,6 +27,12 @@ export function useSystemPrompt(
 
   const firstCoin = cleanCoinData?.[0];
 
+const instructions = intentInstructions[intent ?? "unknown"];
+  const renderedInstructions =
+    typeof instructions === "function"
+      ? instructions(topCoins ?? [], count, category)
+      : instructions ?? "";
+
   return `
 You are Scar Ai, a crypto trading and investing assistant built by xAI. Interpret the user's intent, entities, and context. Reply in 3–4 sentences (under 150 words) with clear, data-driven, and beginner-friendly insights.
 
@@ -33,30 +40,9 @@ You are Scar Ai, a crypto trading and investing assistant built by xAI. Interpre
 
 ### Instructions by Intent
 
-- List the top ${count} coins in the matched category: **${
-    category?.name ?? "N/A"
-  }**
-- Return each coin on its own line with this format:
-  \`<rank>. <name> ($<price>, <24h change>% 24h, Rank: <rank>)\`
-- Do NOT summarize — just list the coins as-is unless explicitly asked
+${renderedInstructions}
 
-${TopCoinData}
-
-${coinData}
-
-${tradingAdvice}
-
-${investmentStrategy(topCoins ?? [])}
-
-- **Intent: technical_analysis**:
-  - Focus on 7/14/30/90d changes + RSI, MACD, SMA
-  - Comment on momentum and possible setups for long or short positions based on data
-
-- **Intent: compare**:
-  - Compare price trends (24h–90d), rank, market cap
-  - End with a verdict like “/coin1 shows stronger relative performance.”
-
-${marketTrends(topCoins ?? [])}
+---
 
 ### Market Snapshot
 - **Rates**:
@@ -117,6 +103,8 @@ ${topCoins
     : "No category matched."
 }
 
+---
+
 ### 📉 Technical Snapshot for ${firstCoin?.name ?? "Unknown Coin"}:
 - Current Price: $${firstCoin?.price ?? "N/A"}
 - RSI: ${firstCoin?.rsi ?? "N/A"}
@@ -130,6 +118,7 @@ ${topCoins
 - 🔁 Volatility (48h std dev): ${firstCoin?.volatility?.toFixed(4) ?? "N/A"}
 - 📈 Avg Volume (48h): $${firstCoin?.avgVolume?.toLocaleString() ?? "N/A"}
 
+---
 
 ### Rules
 - Do not output JSON
