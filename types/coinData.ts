@@ -8,7 +8,10 @@ export interface CoinData {
   description: string;
   categories: string[];
   genesisDate: string | null;
-  sentiment: { upPercentage: number; downPercentage: number };
+  sentiment: {
+    upPercentage: number;
+    downPercentage: number;
+  };
   links: {
     homepage: string[];
     blockchainSites: string[];
@@ -38,27 +41,40 @@ export interface CoinData {
   }>;
   historical?: {
     prices: number[][];
-    volumes?: number[][]; // ✅ Add this
+    volumes?: number[][];
     summary: string;
-    technicals: {
-      rsi: number | null;
-      stochRsi?: number | null;
-      macd: {
-        macd: number;
-        signal: number;
-        histogram: number;
-        isRising: boolean;
-        crossover: "bullish" | "bearish" | null;
-      } | null;
-      sma: {
-        sma20: number;
-      } | null;
-      volumeSupport?: boolean;
+    technical: {
+      daily: IndicatorsResult;
+      fourHour: IndicatorsResult;
     };
     extended?: {
       volatility: number | null;
       avgVolume: number | null;
     };
+    supportResistance?: {
+      resistanceLevels: number[];
+      supportLevels: number[];
+    };
   };
   isTrending?: boolean;
 }
+
+export type IndicatorsResult = {
+  rsi: number | null;
+  stochRsi: number | null;
+  macd: {
+    macd: number;
+    signal: number;
+    histogram: number;
+    isRising: boolean;
+    crossover: "bullish" | "bearish" | null;
+  } | null;
+  sma: {
+    sma20: number;
+    aboveSma: boolean;
+  } | null;
+  volumeSupport?: boolean;
+  volatility: number | null;
+  stochRsiFlip: "bullish" | "bearish" | null;
+  confidence: "low" | "medium" | "high";
+};

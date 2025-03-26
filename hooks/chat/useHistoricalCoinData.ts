@@ -1,5 +1,6 @@
 import { CoinData } from "@/types/coinData";
 import { calculateIndicators } from "./calculateIndicators";
+import { detectSupportResistance } from "./detectSupportResistance";
 
 async function fetchWithRetry(
   url: string,
@@ -24,24 +25,12 @@ async function fetchWithRetry(
   throw new Error("Max retries reached on 429");
 }
 
-function calculateVolatility(prices: number[][]): number {
-  const returns = prices.slice(1).map((p, i) => Math.log(p[1] / prices[i][1]));
-  const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
-  const variance =
-    returns.reduce((sum, r) => sum + (r - mean) ** 2, 0) / returns.length;
-  return Math.sqrt(variance);
-}
-
 function calculateAverageVolume(volumes: number[][]): number {
   if (!volumes.length) return 0;
   const total = volumes.reduce((sum, [, volume]) => sum + volume, 0);
   return total / volumes.length;
 }
 
-/**
- * Fetches 90-day historical price data, plus 48h intraday range data,
- * and calculates RSI, MACD, SMA, StochRSI, volume support, volatility, and average volume.
- */
 export async function useHistoricalCoinData(
   tickers: string[],
   coinData: Record<string, CoinData>
@@ -59,68 +48,84 @@ export async function useHistoricalCoinData(
     if (updatedCoinData[ticker].historical) continue;
 
     try {
-      // Step 1: Fetch 90-day daily data
-      const response = await fetchWithRetry(
-        `https://api.coingecko.com/api/v3/coins/${ticker}/market_chart?vs_currency=usd&days=90&interval=daily`,
-        {
-          headers: {
-            accept: "application/json",
-            ...(apiKey && { "x-cg-demo-api-key": apiKey }),
-          },
-        }
-      );
-
-      const data = await response.json();
-      const prices = data.prices as number[][];
-      if (prices.length < 26) continue;
-
-      // Step 2: Wait 2 seconds before range fetch
-      await new Promise((res) => setTimeout(res, 2000));
-
       const now = Math.floor(Date.now() / 1000);
-      const from = now - 2 * 24 * 60 * 60; // 48 hours ago
+      const from90d = now - 90 * 24 * 60 * 60;
 
+      // 1. Fetch 90-day high resolution price data (5 min intervals)
       const rangeRes = await fetchWithRetry(
-        `https://api.coingecko.com/api/v3/coins/${ticker}/market_chart/range?vs_currency=usd&from=${from}&to=${now}&precision=full`,
+        `https://api.coingecko.com/api/v3/coins/${ticker}/market_chart/range?vs_currency=usd&from=${from90d}&to=${now}&precision=full`,
         {
           headers: {
             accept: "application/json",
-            ...(apiKey && { "x-cg-demo-api-key": apiKey }),
+            "x-cg-demo-api-key": apiKey,
           },
         }
       );
 
       const rangeData = await rangeRes.json();
-      const intradayPrices = rangeData.prices as number[][];
+      const prices = rangeData.prices as number[][];
       const volumes = rangeData.total_volumes as number[][];
 
-      const volatility =
-        intradayPrices.length > 10 ? calculateVolatility(intradayPrices) : null;
-      const avgVolume =
-        volumes.length > 0 ? calculateAverageVolume(volumes) : null;
+      if (prices.length < 100) continue;
 
       const currentVolume =
         parseFloat(updatedCoinData[ticker]?.current?.volume ?? "0") ||
         undefined;
+      const avgVolume = volumes.length ? calculateAverageVolume(volumes) : null;
 
-      const indicators = calculateIndicators(prices, volumes, currentVolume);
+      // 2. Indicators from daily and 4h compressed candles
+      const compressPrices = (intervalMinutes: number): number[][] => {
+        const bucketed: Record<number, number[]> = {};
+        const result: number[][] = [];
+        for (const [timestamp, price] of prices) {
+          const bucket = Math.floor(timestamp / (intervalMinutes * 60 * 1000));
+          bucketed[bucket] = [...(bucketed[bucket] || []), price];
+        }
+        for (const key in bucketed) {
+          const ts = parseInt(key) * intervalMinutes * 60 * 1000;
+          const close = bucketed[key].at(-1)!;
+          result.push([ts, close]);
+        }
+        return result.sort((a, b) => a[0] - b[0]);
+      };
+
+      const daily = compressPrices(1440);
+      const fourHour = compressPrices(240);
+
+      const dailyIndicators = calculateIndicators(
+        daily,
+        volumes,
+        currentVolume
+      );
+      const fourHourIndicators = calculateIndicators(
+        fourHour,
+        volumes,
+        currentVolume
+      );
+
+      // 3. Detect Support/Resistance Zones
+      const { resistanceLevels, supportLevels } = detectSupportResistance(
+        prices,
+        volumes
+      );
 
       updatedCoinData[ticker].historical = {
         prices,
-        volumes, // ✅ now stored
+        volumes,
         summary: `90-day range: $${Math.min(...prices.map((p) => p[1])).toFixed(
           2
         )} - $${Math.max(...prices.map((p) => p[1])).toFixed(2)}`,
-        technicals: {
-          rsi: indicators.rsi,
-          stochRsi: indicators.stochRsi,
-          macd: indicators.macd,
-          sma: indicators.sma,
-          volumeSupport: indicators.volumeSupport,
+        technical: {
+          daily: dailyIndicators,
+          fourHour: fourHourIndicators,
         },
         extended: {
-          volatility,
           avgVolume,
+          volatility: dailyIndicators.volatility ?? null,
+        },
+        supportResistance: {
+          resistanceLevels,
+          supportLevels,
         },
       };
     } catch (error) {
