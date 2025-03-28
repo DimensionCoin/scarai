@@ -149,15 +149,18 @@ export default function OracleButton({ children }: OracleButtonProps) {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/chat", {
+      const updatedHistory = [...messages, userMessage].slice(-3); // last 3 messages
+
+      const response = await fetch("/api/askScar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user?.id,
           message: input,
-          chatHistory: messages,
+          chatHistory: updatedHistory,
         }),
       });
+
 
       if (!response.ok || !response.body) {
         const errorText = await response.text();

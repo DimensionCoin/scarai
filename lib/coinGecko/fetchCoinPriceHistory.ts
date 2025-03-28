@@ -2,9 +2,20 @@ import { fetchWithRetry } from "@/utils/fetchWithRetry";
 import { calculateIndicators } from "../indicators/calculateIndicators";
 import { detectSupportResistance } from "../indicators/detectSupportResistance";
 
-// Utility to format coin slug into proper display name (e.g. solana => Solana)
 function toTitleCase(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
+function formatUtcToLocal(timestamp: number): string {
+  const date = new Date(timestamp);
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
 }
 
 export async function fetchCoinPriceHistory(slugRaw: string): Promise<string> {
@@ -39,11 +50,13 @@ export async function fetchCoinPriceHistory(slugRaw: string): Promise<string> {
       return "Insufficient historical data available.";
     }
 
+    const [lastTimestamp, lastPrice] = prices.at(-1)!;
+    const lastUpdated = formatUtcToLocal(lastTimestamp);
+
     const low = Math.min(...prices.map(([, p]) => p));
     const high = Math.max(...prices.map(([, p]) => p));
-
     const changePercent =
-      (((prices.at(-1)?.[1] ?? 0) - prices[0][1]) / prices[0][1]) * 100;
+      (((lastPrice ?? 0) - prices[0][1]) / prices[0][1]) * 100;
 
     const compressPrices = (intervalMinutes: number): number[][] => {
       const bucketed: Record<number, number[]> = {};
@@ -68,22 +81,25 @@ export async function fetchCoinPriceHistory(slugRaw: string): Promise<string> {
 
     const indicatorsDaily = calculateIndicators(daily, volumes);
     const indicators4h = calculateIndicators(fourHour, volumes);
-    const { supportLevels, resistanceLevels } = detectSupportResistance(
-      prices,
-      volumes
-    );
+
+    const { supportLevels, resistanceLevels, weakSupport, weakResistance } =
+      detectSupportResistance(prices, volumes);
+
+    const formatLevels = (levels?: number[]) =>
+      levels?.length ? levels.map((v) => `$${v.toFixed(2)}`).join(", ") : "N/A";
 
     return `
 **Technical Analysis for ${displayName}**
 
+- Last Updated Price: $${lastPrice.toFixed(2)} (as of ${lastUpdated})
 - Price Range: $${low.toFixed(2)} - $${high.toFixed(2)} (last 90 days)
 - Change: ${changePercent.toFixed(2)}%
 
 **Support & Resistance**
-- Support: ${supportLevels.map((v) => `$${v.toFixed(2)}`).join(", ") || "N/A"}
-- Resistance: ${
-      resistanceLevels.map((v) => `$${v.toFixed(2)}`).join(", ") || "N/A"
-    }
+- Strong Support: ${formatLevels(supportLevels)}
+- Weak Support: ${formatLevels(weakSupport)}
+- Strong Resistance: ${formatLevels(resistanceLevels)}
+- Weak Resistance: ${formatLevels(weakResistance)}
 
 **Indicators (Daily)**
 - RSI: ${indicatorsDaily.rsi?.toFixed(1) ?? "N/A"}

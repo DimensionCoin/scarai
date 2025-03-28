@@ -1,34 +1,45 @@
-// lib/coinGecko/detectSupportResistance.ts
-
 export function detectSupportResistance(
   prices: number[][],
   volumes: number[][]
 ): {
   supportLevels: number[];
   resistanceLevels: number[];
+  weakSupport: number[];
+  weakResistance: number[];
 } {
   const pricePoints = prices.map(([, price]) => price);
-  const volumeMap = new Map<number, number>();
-  const threshold = 0.02; // 2% similarity threshold to cluster price zones
+  const volumeMap = new Map<number, { total: number; count: number }>();
+
+  const strongThreshold = 0.02; // 2% similarity for strong clustering
 
   for (let i = 0; i < prices.length; i++) {
     const price = prices[i][1];
     const volume = volumes[i]?.[1] ?? 0;
 
     const rounded = parseFloat(price.toFixed(2));
-    const existing = [...volumeMap.keys()].find(
-      (key) => Math.abs(key - rounded) / key < threshold
+    const existingCluster = [...volumeMap.keys()].find(
+      (key) => Math.abs(key - rounded) / key < strongThreshold
     );
 
-    if (existing !== undefined) {
-      volumeMap.set(existing, volumeMap.get(existing)! + volume);
+    if (existingCluster !== undefined) {
+      const data = volumeMap.get(existingCluster)!;
+      data.total += volume;
+      data.count += 1;
     } else {
-      volumeMap.set(rounded, volume);
+      volumeMap.set(rounded, { total: volume, count: 1 });
     }
   }
 
-  const sorted = [...volumeMap.entries()].sort((a, b) => b[1] - a[1]);
-  const topZones = sorted.slice(0, 10).map(([price]) => price);
+  // Sort by average volume (high-volume zones = stronger support/resistance)
+  const sorted = [...volumeMap.entries()]
+    .map(([price, { total, count }]) => ({
+      price,
+      avgVolume: total / count,
+    }))
+    .sort((a, b) => b.avgVolume - a.avgVolume);
+
+  const topZones = sorted.slice(0, 12).map((z) => z.price);
+  const weakZones = sorted.slice(12, 20).map((z) => z.price);
 
   const maxPrice = Math.max(...pricePoints);
   const minPrice = Math.min(...pricePoints);
@@ -44,8 +55,18 @@ export function detectSupportResistance(
     .sort((a, b) => a - b)
     .slice(0, 3);
 
+  const weakSupport = weakZones
+    .filter((p) => p < midpoint)
+    .sort((a, b) => b - a);
+
+  const weakResistance = weakZones
+    .filter((p) => p > midpoint)
+    .sort((a, b) => a - b);
+
   return {
     supportLevels,
     resistanceLevels,
+    weakSupport,
+    weakResistance,
   };
 }

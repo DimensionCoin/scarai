@@ -49,6 +49,10 @@ Example 6:
 User: "if you had $400 how would you put it into /solana /drift-protocol"
 → intent: "investment_advice"
 
+Example 7:
+User: "How does /bitcoin look today?"
+→ intent: "technical_analysis"
+
 Input Message:
 "${message}"
 
