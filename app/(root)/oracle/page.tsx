@@ -129,28 +129,34 @@ export default function ChatPage() {
     };
   }, []);
 
+  const fetchResults = async () => {
+    setCoinSearchLoading(true);
+    try {
+      const response = await fetch(
+        `/api/coinlist?query=${encodeURIComponent(coinSearchQuery)}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setcoinResults(data.slice(0, 5));
+      } else {
+        console.error(
+          "Error fetching coin search results:",
+          response.statusText
+        );
+        // Optionally show an error message to the user
+      }
+    } catch (error) {
+      console.error("Error fetching coin search results:", error);
+    } finally {
+      setCoinSearchLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!coinSearchQuery.trim()) {
       setcoinResults([]);
       return;
     }
-
-    const fetchResults = async () => {
-      setCoinSearchLoading(true);
-      try {
-        const response = await fetch(
-          `/api/coinlist?query=${encodeURIComponent(coinSearchQuery)}`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setcoinResults(data.slice(0, 5));
-        }
-      } catch (error) {
-        console.error("Error fetching coin search results:", error);
-      } finally {
-        setCoinSearchLoading(false);
-      }
-    };
 
     const timer = setTimeout(() => {
       fetchResults();
@@ -171,7 +177,7 @@ export default function ChatPage() {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch("/api/askScar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -324,6 +330,8 @@ export default function ChatPage() {
       <div
         className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent"
         style={{ paddingBottom: `${bottomPadding}px` }}
+        role="log"
+        aria-label="Chat messages"
       >
         <AnimatePresence>
           {messages.map((msg, index) => (
@@ -485,11 +493,13 @@ export default function ChatPage() {
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Ask about crypto..."
+            aria-label="Chat message input"
             className="w-full bg-black/20 border border-white/10 text-white text-base md:text-sm placeholder-zinc-500 pr-10 py-2.5 rounded-lg focus-visible:ring-teal-500 focus-visible:border-teal-500/50 focus-visible:ring-offset-0"
           />
           <Button
             onClick={sendMessage}
             disabled={loading || !input.trim()}
+            aria-label="Send message"
             className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 group"
           >
             {loading ? (
