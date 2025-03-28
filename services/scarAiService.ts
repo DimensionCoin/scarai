@@ -21,16 +21,32 @@ export async function processScarMessage({
   if (validationError) {
     return NextResponse.json({ error: validationError.error }, { status: 403 });
   }
-  // Step 1: Parse intent/entities/context using DeepSeek
-  const parsed = await parsePrompt(message, chatHistory);
 
-  // Step 2: Get data + rules based on intent
+  const parsed = await parsePrompt(message, chatHistory);
   const { systemPrompt, data } = await getIntentData(parsed);
 
-  // Step 3: Send everything to Grok to get a response
+  // Get last 3 messages (user + assistant)
+  const recentMessages = chatHistory
+    .slice(-3)
+    .map((msg) => {
+      return `${msg.role === "user" ? "User" : "Assistant"}: ${msg.content}`;
+    })
+    .join("\n");
+
+  // Final Grok context includes:
+  const fullContext = `
+Previous Messages:
+${recentMessages}
+
+---
+
+User Query Context:
+${parsed.context}
+`.trim();
+
   const grokResponse = await callGrok({
     systemPrompt,
-    context: parsed.context,
+    context: fullContext,
     data,
   });
 
