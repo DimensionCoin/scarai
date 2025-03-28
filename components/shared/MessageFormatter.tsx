@@ -58,11 +58,13 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({ content }) => {
     const exitTarget = extractField("Exit Target");
     const stopLoss = extractField("Stop-loss");
     const liquidation = extractField("Liquidation");
-    const riskNote = extractField("Risk Note");
+    const riskNote = extractField("Risk Analysis");
     const macroSummary = extractField("Macro Summary");
 
     const isLong = direction.toLowerCase().includes("long");
     const isShort = direction.toLowerCase().includes("short");
+
+    const adaptabilityInsight = extractField("Adaptability Insight");
 
     const directionColor = isLong
       ? "text-teal-400"
@@ -147,6 +149,14 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({ content }) => {
             title="Macro Summary"
             value={macroSummary}
             color="text-indigo-400"
+          />
+        )}
+        {adaptabilityInsight && (
+          <InfoSection
+            icon={AlertTriangle}
+            title="Adaptability Insight"
+            value={adaptabilityInsight}
+            color="text-green-400"
           />
         )}
       </div>

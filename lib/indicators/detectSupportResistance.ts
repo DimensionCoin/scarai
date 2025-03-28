@@ -1,36 +1,46 @@
+// ./lib/indicators/detectSupportResistance.ts
+
 export function detectSupportResistance(
   prices: number[][],
   volumes: number[][]
 ): {
   supportLevels: number[];
   resistanceLevels: number[];
-  weakSupport: number[];
-  weakResistance: number[];
+  weakSupport?: number[];
+  weakResistance?: number[];
 } {
   const pricePoints = prices.map(([, price]) => price);
   const volumeMap = new Map<number, { total: number; count: number }>();
 
-  const strongThreshold = 0.02; // 2% similarity for strong clustering
+  const recentWindow = 7 * 24 * 60 * 60 * 1000; // last 7 days in ms
+  const now = prices.at(-1)?.[0] ?? Date.now();
+  const recentCutoff = now - recentWindow;
+
+  const strongThreshold = 0.02; // 2% threshold for strong clusters
 
   for (let i = 0; i < prices.length; i++) {
-    const price = prices[i][1];
+    const [timestamp, price] = prices[i];
     const volume = volumes[i]?.[1] ?? 0;
 
     const rounded = parseFloat(price.toFixed(2));
-    const existingCluster = [...volumeMap.keys()].find(
+    const bucket = [...volumeMap.keys()].find(
       (key) => Math.abs(key - rounded) / key < strongThreshold
     );
 
-    if (existingCluster !== undefined) {
-      const data = volumeMap.get(existingCluster)!;
-      data.total += volume;
-      data.count += 1;
+    const recentBias = timestamp >= recentCutoff ? 1.2 : 1;
+
+    if (bucket !== undefined) {
+      const existing = volumeMap.get(bucket)!;
+      existing.total += volume * recentBias;
+      existing.count += 1;
     } else {
-      volumeMap.set(rounded, { total: volume, count: 1 });
+      volumeMap.set(rounded, {
+        total: volume * recentBias,
+        count: 1,
+      });
     }
   }
 
-  // Sort by average volume (high-volume zones = stronger support/resistance)
   const sorted = [...volumeMap.entries()]
     .map(([price, { total, count }]) => ({
       price,
@@ -38,27 +48,23 @@ export function detectSupportResistance(
     }))
     .sort((a, b) => b.avgVolume - a.avgVolume);
 
-  const topZones = sorted.slice(0, 12).map((z) => z.price);
-  const weakZones = sorted.slice(12, 20).map((z) => z.price);
-
   const maxPrice = Math.max(...pricePoints);
   const minPrice = Math.min(...pricePoints);
   const midpoint = (maxPrice + minPrice) / 2;
 
-  const supportLevels = topZones
-    .filter((p) => p < midpoint)
-    .sort((a, b) => b - a)
-    .slice(0, 3);
+  const strongZones = sorted.slice(0, 30).map((z) => z.price); // use more zones
+  const weakZones = sorted.slice(30).map((z) => z.price); // remaining as weak
 
-  const resistanceLevels = topZones
+  const supportLevels = strongZones
+    .filter((p) => p < midpoint)
+    .sort((a, b) => b - a);
+  const resistanceLevels = strongZones
     .filter((p) => p > midpoint)
-    .sort((a, b) => a - b)
-    .slice(0, 3);
+    .sort((a, b) => a - b);
 
   const weakSupport = weakZones
     .filter((p) => p < midpoint)
     .sort((a, b) => b - a);
-
   const weakResistance = weakZones
     .filter((p) => p > midpoint)
     .sort((a, b) => a - b);
