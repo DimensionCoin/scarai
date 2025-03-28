@@ -17,6 +17,7 @@ import {
   investmentStategy,
   unknown,
   tradingAdvice,
+  investmentAdvice,
 } from "@/lib/intentPrompts";
 
 export async function getIntentData(parsed: ParsedQuery) {
@@ -113,6 +114,43 @@ export async function getIntentData(parsed: ParsedQuery) {
 
       return {
         systemPrompt: tradingAdvice,
+        data: formatted,
+      };
+    }
+
+    case "investment_advice": {
+      const coins = entities.coins || [];
+
+      if (coins.length === 0) {
+        return {
+          systemPrompt: investmentAdvice,
+          data: "No coins were provided for investment advice.",
+        };
+      }
+
+      const [fundamentals, technicals, market] = await Promise.all([
+        fetchCoinData(coins),
+        Promise.all(coins.map((coin) => fetchCoinPriceHistory(coin))),
+        fetchMarketData(),
+      ]);
+
+      const formatted = `
+              ### Coin Fundamentals
+              ${fundamentals}
+
+              ---
+
+              ### Technical Breakdown
+              ${technicals.join("\n\n---\n\n")}
+
+              ---
+
+              ### Macro Conditions
+              ${market}
+  `.trim();
+
+      return {
+        systemPrompt: investmentAdvice,
         data: formatted,
       };
     }
