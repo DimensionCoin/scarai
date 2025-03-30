@@ -2,6 +2,7 @@
 export const VALID_INTENTS = [
   "coin_data",
   "coin_explanation",
+  "best_trade_today",
   "trading_advice",
   "investment_advice",
   "investment_strategy",

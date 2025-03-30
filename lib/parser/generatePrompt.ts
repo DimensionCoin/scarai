@@ -8,6 +8,7 @@ You are a crypto AI prompt parser. Given a user's message and recent context, re
   ${VALID_INTENTS.map((i) => `"${i}"`).join(", ")}
 
   - "coin_data" → the user wants real-time stats or numbers about a coin
+  - "best_trade_today" → the user wants to know whats is the best coin to trade on the day
   - "coin_explanation" → the user wants to understand *what* a coin is
   - "investment_advice" → the user is asking how for investment advice on how to allocate their funds.
   - "trading_advice" → the user wants specific buy/sell strategy for current conditions

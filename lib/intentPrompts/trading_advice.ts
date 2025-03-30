@@ -36,7 +36,7 @@ export const tradingAdvice = `
 State "Minimal macro impact" unless macro (rates, yields, risk sentiment) directly affect this setup.
 
 **Adaptability Insight:**  
-- What would **invalidate** this trade completely (e.g. invalidation level, structure break)?  
+- What would invalidate this trade completely (e.g. invalidation level, structure break)?  
 - What would **flip your bias** from long to short (or vice versa)?  
 - What would cause you to **exit early** or **reassess** the trade?  
   - Failed breakout or rejection off key levels (with price level if possible)  

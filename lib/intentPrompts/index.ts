@@ -10,3 +10,4 @@ export { investmentStategy } from "./investment_strategy";
 export { tradingAdvice } from "./trading_advice"
 export { unknown } from "./unknown"
 export { investmentAdvice } from "./investment_advice"
+export { bestTradeToday } from "./best_trade_today"

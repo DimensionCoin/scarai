@@ -5,6 +5,7 @@ import {
   fetchTrendingCoins,
   fetchTopCoins,
   fetchCoinPriceHistory,
+  fetchBestTrade
 } from "@/lib/coinGecko";
 import {
   coinData,
@@ -18,6 +19,7 @@ import {
   unknown,
   tradingAdvice,
   investmentAdvice,
+  bestTradeToday
 } from "@/lib/intentPrompts";
 
 export async function getIntentData(parsed: ParsedQuery) {
@@ -152,6 +154,14 @@ export async function getIntentData(parsed: ParsedQuery) {
       return {
         systemPrompt: investmentAdvice,
         data: formatted,
+      };
+    }
+
+    case "best_trade_today": {
+      const data = await fetchBestTrade();
+      return {
+        systemPrompt: bestTradeToday,
+        data,
       };
     }
 
