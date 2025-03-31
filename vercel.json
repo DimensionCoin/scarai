@@ -1,9 +1,11 @@
-
 {
   "crons": [
     {
       "path": "/api/cron/resetFreeCredits",
-      "schedule": "0 0 1 * *" 
+      "schedule": "0 0 1 * *",
+      "headers": {
+        "Authorization": "30Fzt5ytINS10XdAGVbTMgBSMIlqmwV8vg919g0tpYc="
+      }
     }
   ]
 }
