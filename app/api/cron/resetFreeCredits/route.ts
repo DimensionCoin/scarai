@@ -2,36 +2,43 @@ import { NextRequest, NextResponse } from "next/server";
 import { connect } from "@/db";
 import User from "@/models/user.model";
 
-export const runtime = "nodejs"; // Required for Vercel Cron
+export const runtime = "nodejs"; // Required for Mongo + Vercel Cron
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const expectedKey = process.env.CRON_SECRET_KEY;
 
-  if (authHeader !== `Bearer ${expectedKey}`) {
-    console.warn("🔐 Unauthorized attempt to trigger resetFreeCredits");
+  // 🔐 Auth Check
+  if (!authHeader || authHeader !== `Bearer ${expectedKey}`) {
+    console.warn("❌ Unauthorized cron job attempt");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
+    console.log("✅ Authorized cron request — connecting to DB...");
     await connect();
 
+    // 🧼 Reset credits for free tier
     const result = await User.updateMany(
       { subscriptionTier: "free" },
       { $set: { credits: 20 } }
     );
 
-    console.log(
-      `✅ Monthly credit reset: ${result.modifiedCount} free users updated`
-    );
+    console.log(`🔁 ${result.modifiedCount} users reset to 20 credits`);
     return NextResponse.json(
-      { message: "Credits reset", modified: result.modifiedCount },
+      {
+        message: "Monthly credit reset successful",
+        usersUpdated: result.modifiedCount,
+      },
       { status: 200 }
     );
-  } catch (err) {
-    console.error("❌ Failed to reset credits:", err);
+  } catch (error) {
+    console.error("❌ Cron job failed:", error);
     return NextResponse.json(
-      { error: "Internal Server Error" },
+      {
+        error: "Internal Server Error",
+        details: error instanceof Error ? error.message : error,
+      },
       { status: 500 }
     );
   }
