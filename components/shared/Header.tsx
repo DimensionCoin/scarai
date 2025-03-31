@@ -33,9 +33,11 @@ import { CreditsProgressBar } from "./CreditsProgressBar";
 import { useUserContext } from "@/providers/UserProvider";
 import LoadingScreen from "./LoadingScreen";
 import LavaLampEffect from "./LavaLampEffect";
+import { useRouter } from "next/navigation";
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
 const Header = () => {
+  const router = useRouter()
   const { user, isLoaded } = useUser();
   const { tier, isContextLoaded } = useUserContext();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -93,6 +95,17 @@ const Header = () => {
   if (!isLoaded || !isContextLoaded) {
     return <LoadingScreen />;
   }
+
+  const editPaymentDetails = async () => {
+    const url = process.env.NEXT_PUBLIC_STRIPE_CUSTOMER_PORTAL!;
+    if (url) {
+      router.push(
+        url + "?prefilled_email=" + user?.emailAddresses[0]?.emailAddress
+      );
+    } else {
+      throw new Error("Failed to edit payment details");
+    }
+  };
 
   return (
     <>
@@ -205,13 +218,11 @@ const Header = () => {
                           asChild
                           className="cursor-pointer hover:bg-zinc-800/50 focus:bg-zinc-800/50 rounded-lg px-2 py-1.5"
                         >
-                          <Link
-                            href="/billing"
-                            className="flex items-center gap-2"
-                          >
-                            <CreditCard className="h-4 w-4" />
-                            <span>Billing</span>
-                          </Link>
+                        
+                            <button onClick={editPaymentDetails}>
+                              <CreditCard className="h-4 w-4" />
+                              <span>Billing</span>
+                            </button>
                         </DropdownMenuItem>
 
                         {/* Admin Button (Only visible if user is admin) */}
