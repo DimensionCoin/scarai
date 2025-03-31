@@ -189,8 +189,34 @@ export async function POST(req: NextRequest) {
 
       case "invoice.payment_failed": {
         const invoice = event.data.object as Stripe.Invoice;
-        console.log(`⚠️ Payment failed for invoice ${invoice.id}`);
-        // Optional: log, notify user, etc.
+        const customerId = invoice.customer as string;
+        console.log(
+          `⚠️ Payment failed for invoice ${invoice.id} (customer: ${customerId})`
+        );
+
+        // Downgrade tier, keep existing credits
+        const updatedUser = await User.findOneAndUpdate(
+          { customerId },
+          { subscriptionTier: "free" }, // Keep existing credits
+          { new: true }
+        );
+
+        if (!updatedUser) {
+          console.error(
+            "❌ User not found for failed payment (customerId):",
+            customerId
+          );
+          return NextResponse.json(
+            { error: "User not found" },
+            { status: 400 }
+          );
+        }
+
+        console.log(
+          `⚠️ User ${updatedUser.email} downgraded to free (credits retained: ${updatedUser.credits})`
+        );
+
+        // Optional: send notification, log in DB, or queue an email job
         break;
       }
 
