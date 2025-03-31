@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connect } from "@/db";
 import User from "@/models/user.model";
 
-export const runtime = "node"; // Required for Vercel Cron
+export const runtime = "nodejs"; // Required for Vercel Cron
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
