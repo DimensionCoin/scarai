@@ -27,6 +27,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/chat",
   "/api/displaycoins",
   "/api/pythprices",
+  "/api/cron/resetFreeCredits",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
