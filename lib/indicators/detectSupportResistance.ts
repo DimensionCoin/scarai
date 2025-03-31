@@ -1,78 +1,68 @@
 // ./lib/indicators/detectSupportResistance.ts
 
+export type SRLevel = {
+  price: number;
+  strength: "strong" | "moderate" | "weak";
+};
+
 export function detectSupportResistance(
   prices: number[][],
   volumes: number[][]
 ): {
-  supportLevels: number[];
-  resistanceLevels: number[];
-  weakSupport?: number[];
-  weakResistance?: number[];
+  supportLevels: SRLevel[];
+  resistanceLevels: SRLevel[];
 } {
-  const pricePoints = prices.map(([, price]) => price);
-  const volumeMap = new Map<number, { total: number; count: number }>();
-
-  const recentWindow = 7 * 24 * 60 * 60 * 1000; // last 7 days in ms
+  const pricePoints = prices.map(([, p]) => p);
+  const volumePoints = volumes.map(([, v]) => v);
   const now = prices.at(-1)?.[0] ?? Date.now();
-  const recentCutoff = now - recentWindow;
+  const recentCutoff = now - 7 * 24 * 60 * 60 * 1000;
 
-  const strongThreshold = 0.02; // 2% threshold for strong clusters
+  const range = Math.max(...pricePoints) - Math.min(...pricePoints);
+  const clusteringThreshold = range * 0.01; // dynamic bucket size (~1% of price range)
+  const volumeMap = new Map<number, number>();
 
   for (let i = 0; i < prices.length; i++) {
     const [timestamp, price] = prices[i];
-    const volume = volumes[i]?.[1] ?? 0;
+    const volume = volumePoints[i] ?? 0;
 
-    const rounded = parseFloat(price.toFixed(2));
-    const bucket = [...volumeMap.keys()].find(
-      (key) => Math.abs(key - rounded) / key < strongThreshold
+    const adjustedVolume = timestamp >= recentCutoff ? volume * 1.5 : volume;
+    const bucket = Array.from(volumeMap.keys()).find(
+      (key) => Math.abs(price - key) <= clusteringThreshold
     );
 
-    const recentBias = timestamp >= recentCutoff ? 1.2 : 1;
-
     if (bucket !== undefined) {
-      const existing = volumeMap.get(bucket)!;
-      existing.total += volume * recentBias;
-      existing.count += 1;
+      volumeMap.set(bucket, volumeMap.get(bucket)! + adjustedVolume);
     } else {
-      volumeMap.set(rounded, {
-        total: volume * recentBias,
-        count: 1,
-      });
+      volumeMap.set(price, adjustedVolume);
     }
   }
 
-  const sorted = [...volumeMap.entries()]
-    .map(([price, { total, count }]) => ({
-      price,
-      avgVolume: total / count,
-    }))
-    .sort((a, b) => b.avgVolume - a.avgVolume);
+  // Normalize volume weights
+  const sortedZones = [...volumeMap.entries()]
+    .map(([price, weight]) => ({ price, weight }))
+    .sort((a, b) => b.weight - a.weight);
 
-  const maxPrice = Math.max(...pricePoints);
-  const minPrice = Math.min(...pricePoints);
-  const midpoint = (maxPrice + minPrice) / 2;
+  const maxWeight = sortedZones[0]?.weight ?? 1;
+  const midpoint = (Math.max(...pricePoints) + Math.min(...pricePoints)) / 2;
 
-  const strongZones = sorted.slice(0, 30).map((z) => z.price); // use more zones
-  const weakZones = sorted.slice(30).map((z) => z.price); // remaining as weak
+  const classifyStrength = (w: number): "strong" | "moderate" | "weak" => {
+    const ratio = w / maxWeight;
+    if (ratio > 0.7) return "strong";
+    if (ratio > 0.4) return "moderate";
+    return "weak";
+  };
 
-  const supportLevels = strongZones
-    .filter((p) => p < midpoint)
-    .sort((a, b) => b - a);
-  const resistanceLevels = strongZones
-    .filter((p) => p > midpoint)
-    .sort((a, b) => a - b);
+  const supportLevels: SRLevel[] = [];
+  const resistanceLevels: SRLevel[] = [];
 
-  const weakSupport = weakZones
-    .filter((p) => p < midpoint)
-    .sort((a, b) => b - a);
-  const weakResistance = weakZones
-    .filter((p) => p > midpoint)
-    .sort((a, b) => a - b);
+  for (const { price, weight } of sortedZones) {
+    const strength = classifyStrength(weight);
+    if (price < midpoint) supportLevels.push({ price, strength });
+    else resistanceLevels.push({ price, strength });
+  }
 
   return {
-    supportLevels,
-    resistanceLevels,
-    weakSupport,
-    weakResistance,
+    supportLevels: supportLevels.sort((a, b) => b.price - a.price),
+    resistanceLevels: resistanceLevels.sort((a, b) => a.price - b.price),
   };
 }

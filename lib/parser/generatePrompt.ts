@@ -26,6 +26,8 @@ You are a crypto AI prompt parser. Given a user's message and recent context, re
 
 - context: A short summary of what the user is asking
 
+Also detect if the user's question is a follow-up based on recent context. If it is, set intent to the same as before and entities to an empty object unless new entities are clearly mentioned.
+
 Example 1:
 User: "What’s the RSI for Solana?"
 → intent: "technical_analysis"
@@ -53,6 +55,15 @@ User: "if you had $400 how would you put it into /solana /drift-protocol"
 Example 7:
 User: "How does /bitcoin look today?"
 → intent: "technical_analysis"
+
+Example 8:
+User: "What are the top coins in the Solana ecosystem?"
+→ intent: "category_coins", entities: { category: "solana-ecosystem" }
+
+Example 9:
+User: "Give me coins in the real-world-assets category"
+→ intent: "category_coins", entities: { category: "real-world-assets" }
+
 
 Input Message:
 "${message}"

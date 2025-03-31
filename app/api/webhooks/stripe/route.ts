@@ -3,17 +3,14 @@ import Stripe from "stripe";
 import { connect } from "@/db";
 import User from "@/models/user.model";
 
-// Initialize Stripe with the correct API version
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-02-24.acacia",
 });
-// Stripe Webhook Secret
+
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 export const config = {
-  api: {
-    bodyParser: false,
-  },
+  api: { bodyParser: false },
   runtime: "edge",
   streaming: false,
 };
@@ -58,85 +55,46 @@ export async function POST(req: NextRequest) {
             expand: ["line_items.data.price", "customer"],
           }
         );
-        console.log("🔍 Full session retrieved:", fullSession.id);
 
-        let customerId: string | null = null;
-        if (typeof fullSession.customer === "string") {
-          customerId = fullSession.customer;
-        } else if (fullSession.customer && "id" in fullSession.customer) {
-          customerId = fullSession.customer.id;
-        }
-        console.log("🔍 Customer ID:", customerId);
-        if (!customerId) {
-          console.error("❌ Missing customer ID:", fullSession.customer);
-          return NextResponse.json(
-            { error: "Missing customer ID" },
-            { status: 400 }
-          );
-        }
+        const customerId =
+          typeof fullSession.customer === "string"
+            ? fullSession.customer
+            : fullSession.customer?.id;
 
         const metadata = session.metadata as { userId: string } | null;
-        console.log("🔍 Session metadata:", metadata);
-        if (!metadata || !metadata.userId) {
-          console.error("❌ Missing metadata.userId:", metadata);
-          return NextResponse.json(
-            { error: "Missing metadata userId" },
-            { status: 400 }
-          );
-        }
-
         const priceId = fullSession.line_items?.data?.[0]?.price?.id;
-        console.log("🔍 Price ID from session:", priceId);
-        console.log(
-          "🔍 Expected BASIC Price ID:",
-          process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID
-        );
-        console.log(
-          "🔍 Expected PREMIUM Price ID:",
-          process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID
-        );
 
-        if (!priceId) {
-          console.error("❌ Missing Price ID");
+        if (!customerId || !metadata?.userId || !priceId) {
           return NextResponse.json(
-            { error: "Missing Price ID" },
+            { error: "Missing required data from session" },
             { status: 400 }
           );
         }
 
-        let newSubscriptionTier: "free" | "basic" | "premium" = "free";
-        let newCredits = 20; // Default for free tier
+        let tier: "basic" | "premium" | "free" = "free";
+        let credits = 20;
         if (priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID) {
-          newSubscriptionTier = "basic";
-          newCredits = 1250; // Basic tier gets 1250 credits
+          tier = "basic";
+          credits = 1250;
         } else if (
           priceId === process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID
         ) {
-          newSubscriptionTier = "premium";
-          newCredits = 2000; // Premium tier gets 2000 credits
+          tier = "premium";
+          credits = 2000;
         } else {
-          console.error("❌ Unknown Price ID:", priceId);
           return NextResponse.json(
             { error: "Unknown Price ID" },
             { status: 400 }
           );
         }
-        console.log("🔍 New subscription tier:", newSubscriptionTier);
-        console.log("🔍 New credits value:", newCredits);
 
         const updatedUser = await User.findOneAndUpdate(
           { clerkId: metadata.userId },
-          {
-            subscriptionTier: newSubscriptionTier,
-            customerId,
-            credits: newCredits, // Set credits to the exact value
-          },
+          { subscriptionTier: tier, customerId, credits },
           { new: true }
         );
-        console.log("🔍 Updated user:", JSON.stringify(updatedUser, null, 2));
 
         if (!updatedUser) {
-          console.error("❌ User not found for clerkId:", metadata.userId);
           return NextResponse.json(
             { error: "User not found" },
             { status: 400 }
@@ -144,7 +102,7 @@ export async function POST(req: NextRequest) {
         }
 
         console.log(
-          `✅ User upgraded to ${newSubscriptionTier} with credits set to ${newCredits}`
+          `✅ User ${updatedUser.email} upgraded to ${tier} with ${credits} credits`
         );
         break;
       }
@@ -153,66 +111,45 @@ export async function POST(req: NextRequest) {
         console.log("🔥 Processing invoice.payment_succeeded");
 
         const invoice = event.data.object as Stripe.Invoice;
-        console.log("🔍 Invoice ID:", invoice.id);
+        if (!invoice.subscription) break;
 
-        // Ensure this is a subscription renewal (not a one-time payment)
-        if (!invoice.subscription) {
-          console.log("ℹ️ Not a subscription invoice, skipping");
-          break;
-        }
-
-        // Retrieve the subscription to get the price ID
         const subscription = await stripe.subscriptions.retrieve(
           invoice.subscription as string
         );
         const priceId = subscription.items.data[0]?.price.id;
-        console.log("🔍 Subscription Price ID:", priceId);
+        const customerId = invoice.customer as string;
 
         if (!priceId) {
-          console.error("❌ Missing Price ID in subscription");
           return NextResponse.json(
             { error: "Missing Price ID" },
             { status: 400 }
           );
         }
 
-        // Map price ID to tier and credits
-        let newSubscriptionTier: "free" | "basic" | "premium" = "free";
-        let newCredits = 20;
+        let tier: "basic" | "premium" | "free" = "free";
+        let credits = 20;
         if (priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID) {
-          newSubscriptionTier = "basic";
-          newCredits = 1250; // Reset to 2,500 credits for basic
+          tier = "basic";
+          credits = 1250;
         } else if (
           priceId === process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID
         ) {
-          newSubscriptionTier = "premium";
-          newCredits = 2000; // Reset to 5,000 credits for premium
+          tier = "premium";
+          credits = 2000;
         } else {
-          console.error("❌ Unknown Price ID:", priceId);
           return NextResponse.json(
             { error: "Unknown Price ID" },
             { status: 400 }
           );
         }
-        console.log("🔍 Renewal subscription tier:", newSubscriptionTier);
-        console.log("🔍 Renewal credits value:", newCredits);
 
-        // Find the user by customerId (since clerkId isn’t in invoice metadata)
         const updatedUser = await User.findOneAndUpdate(
-          { customerId: invoice.customer },
-          {
-            subscriptionTier: newSubscriptionTier,
-            credits: newCredits, // Reset credits to the exact value
-          },
+          { customerId },
+          { subscriptionTier: tier, credits },
           { new: true }
-        );
-        console.log(
-          "🔍 Updated user on renewal:",
-          JSON.stringify(updatedUser, null, 2)
         );
 
         if (!updatedUser) {
-          console.error("❌ User not found for customerId:", invoice.customer);
           return NextResponse.json(
             { error: "User not found" },
             { status: 400 }
@@ -220,8 +157,40 @@ export async function POST(req: NextRequest) {
         }
 
         console.log(
-          `✅ User renewed ${newSubscriptionTier} with credits reset to ${newCredits}`
+          `✅ User ${updatedUser.email} renewed ${tier} with ${credits} credits`
         );
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        console.log("🔥 Processing customer.subscription.deleted");
+
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
+
+        const updatedUser = await User.findOneAndUpdate(
+          { customerId },
+          { subscriptionTier: "free", credits: 20 },
+          { new: true }
+        );
+
+        if (!updatedUser) {
+          return NextResponse.json(
+            { error: "User not found" },
+            { status: 400 }
+          );
+        }
+
+        console.log(
+          `✅ User ${updatedUser.email} downgraded to free tier with 20 credits`
+        );
+        break;
+      }
+
+      case "invoice.payment_failed": {
+        const invoice = event.data.object as Stripe.Invoice;
+        console.log(`⚠️ Payment failed for invoice ${invoice.id}`);
+        // Optional: log, notify user, etc.
         break;
       }
 

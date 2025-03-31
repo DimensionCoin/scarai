@@ -65,6 +65,8 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({ content }) => {
     const isShort = direction.toLowerCase().includes("short");
 
     const adaptabilityInsight = extractField("Adaptability Insight");
+    const setupType = extractField("Setup Type");
+    const strategyReflection = extractField("Strategy Reflection");
 
     const directionColor = isLong
       ? "text-teal-400"
@@ -132,6 +134,14 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({ content }) => {
               color="text-amber-400"
             />
           )}
+          {setupType && (
+            <InfoBlock
+              icon={Zap}
+              label="Setup Type"
+              value={setupType}
+              color="text-purple-400"
+            />
+          )}
         </div>
 
         {riskNote && (
@@ -157,6 +167,14 @@ const MessageFormatter: React.FC<MessageFormatterProps> = ({ content }) => {
             title="Adaptability Insight"
             value={adaptabilityInsight}
             color="text-green-400"
+          />
+        )}
+        {strategyReflection && (
+          <InfoSection
+            icon={TrendingUp}
+            title="Strategy Reflection"
+            value={strategyReflection}
+            color="text-blue-400"
           />
         )}
       </div>

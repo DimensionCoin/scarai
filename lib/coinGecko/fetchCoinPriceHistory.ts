@@ -1,6 +1,10 @@
 import { fetchWithRetry } from "@/utils/fetchWithRetry";
 import { calculateIndicators } from "../indicators/calculateIndicators";
-import { detectSupportResistance } from "../indicators/detectSupportResistance";
+import {
+  detectSupportResistance,
+  SRLevel,
+} from "../indicators/detectSupportResistance";
+import { runBacktests } from "@/lib/backtest/runBacktests"; 
 
 function toTitleCase(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
@@ -18,15 +22,35 @@ function formatUtcToLocal(timestamp: number): string {
   }).format(date);
 }
 
+function formatSRLevels(levels: SRLevel[] = []): string {
+  return levels.length
+    ? levels
+        .map((lvl) => {
+          const emoji =
+            lvl.strength === "strong"
+              ? "🟩"
+              : lvl.strength === "moderate"
+              ? "🟨"
+              : "🟥";
+          return `${emoji} $${lvl.price.toFixed(2)}`;
+        })
+        .join(", ")
+    : "N/A";
+}
+
+function formatFib(fib?: { [key: string]: number } | null): string {
+  return fib
+    ? Object.entries(fib)
+        .map(([level, val]) => `${level}: $${val.toFixed(2)}`)
+        .join("\n")
+    : "N/A";
+}
+
 export async function fetchCoinPriceHistory(slugRaw: string): Promise<string> {
   const slug = typeof slugRaw === "string" ? slugRaw.replace("/", "") : "";
   const displayName = toTitleCase(slug);
-
   const apiKey = process.env.NEXT_PUBLIC_COINGECKO_API_KEY;
-  if (!apiKey) {
-    console.error("⚠️ Missing CoinGecko API key.");
-    return "Price history unavailable.";
-  }
+  if (!apiKey) return "Missing CoinGecko API key.";
 
   try {
     const now = Math.floor(Date.now() / 1000);
@@ -34,12 +58,7 @@ export async function fetchCoinPriceHistory(slugRaw: string): Promise<string> {
 
     const res = await fetchWithRetry(
       `https://api.coingecko.com/api/v3/coins/${slug}/market_chart/range?vs_currency=usd&from=${from}&to=${now}&precision=full`,
-      {
-        headers: {
-          accept: "application/json",
-          "x-cg-demo-api-key": apiKey,
-        },
-      }
+      { headers: { accept: "application/json", "x-cg-demo-api-key": apiKey } }
     );
 
     const data = await res.json();
@@ -52,7 +71,6 @@ export async function fetchCoinPriceHistory(slugRaw: string): Promise<string> {
 
     const [lastTimestamp, lastPrice] = prices.at(-1)!;
     const lastUpdated = formatUtcToLocal(lastTimestamp);
-
     const low = Math.min(...prices.map(([, p]) => p));
     const high = Math.max(...prices.map(([, p]) => p));
     const changePercent =
@@ -81,32 +99,53 @@ export async function fetchCoinPriceHistory(slugRaw: string): Promise<string> {
 
     const indicatorsDaily = calculateIndicators(daily, volumes);
     const indicators4h = calculateIndicators(fourHour, volumes);
+    const { supportLevels, resistanceLevels } = detectSupportResistance(
+      prices,
+      volumes
+    );
 
-    const { supportLevels, resistanceLevels, weakSupport, weakResistance } =
-      detectSupportResistance(prices, volumes);
-
-    const formatLevels = (levels?: number[]) =>
-      levels?.length ? levels.map((v) => `$${v.toFixed(2)}`).join(", ") : "N/A";
+    const backtest = runBacktests(daily);
 
     return `
 **Technical Analysis for ${displayName}**
 
 - Last Updated Price: $${lastPrice.toFixed(2)} (as of ${lastUpdated})
-- Price Range: $${low.toFixed(2)} - $${high.toFixed(2)} (last 90 days)
+- Price Range: $${low.toFixed(2)} - $${high.toFixed(2)} (90d)
 - Change: ${changePercent.toFixed(2)}%
 
 **Support & Resistance**
-- Strong Support: ${formatLevels(supportLevels)}
-- Weak Support: ${formatLevels(weakSupport)}
-- Strong Resistance: ${formatLevels(resistanceLevels)}
-- Weak Resistance: ${formatLevels(weakResistance)}
+- Support Levels: ${formatSRLevels(supportLevels)}
+- Resistance Levels: ${formatSRLevels(resistanceLevels)}
+
+**Fibonacci Levels**
+${formatFib(indicatorsDaily.fibLevels)}
+
+**Trend Summary**
+- Bias: ${indicatorsDaily.trendBias}
+- Range Position: ${indicatorsDaily.rangePosition?.toFixed(1) ?? "N/A"}%
+- Volatility: ${indicatorsDaily.volatility?.toFixed(2) ?? "N/A"}%
+- VWAP: $${indicatorsDaily.vwap?.toFixed(2) ?? "N/A"}
+- Volume Support: ${indicatorsDaily.volumeSupport ? "Yes" : "No"}
+- Breakout Detected: ${indicatorsDaily.isBreakout ? "Yes 🚀" : "No"}
+- Volume Spike: ${indicatorsDaily.isVolumeSpike ? "Yes 📈" : "No"}
+- Trend Duration: ${indicatorsDaily.trendDuration} bars
+- Range State: ${indicatorsDaily.rangeState}
+
+**Momentum**
+- Momentum (10 bars): ${indicatorsDaily.momentum?.toFixed(2) ?? "N/A"}
 
 **Indicators (Daily)**
 - RSI: ${indicatorsDaily.rsi?.toFixed(1) ?? "N/A"}
 - MACD: ${indicatorsDaily.macd?.macd.toFixed(2) ?? "N/A"} (${
       indicatorsDaily.macd?.crossover || "no signal"
     })
+- Stoch RSI: ${indicatorsDaily.stochRsi?.toFixed(1) ?? "N/A"} (${
+      indicatorsDaily.stochRsiFlip || "no flip"
+    })
 - SMA20: $${indicatorsDaily.sma?.sma20.toFixed(2) ?? "N/A"}
+- SMA50: $${indicatorsDaily.sma?.sma50.toFixed(2) ?? "N/A"}
+- SMA200: $${indicatorsDaily.sma?.sma200.toFixed(2) ?? "N/A"}
+- Candle Pattern: ${indicatorsDaily.candlePattern ?? "None"}
 - Confidence: ${indicatorsDaily.confidence}
 
 **Indicators (4H)**
@@ -114,9 +153,18 @@ export async function fetchCoinPriceHistory(slugRaw: string): Promise<string> {
 - MACD: ${indicators4h.macd?.macd.toFixed(2) ?? "N/A"} (${
       indicators4h.macd?.crossover || "no signal"
     })
+- Stoch RSI: ${indicators4h.stochRsi?.toFixed(1) ?? "N/A"} (${
+      indicators4h.stochRsiFlip || "no flip"
+    })
 - SMA20: $${indicators4h.sma?.sma20.toFixed(2) ?? "N/A"}
+- SMA50: $${indicators4h.sma?.sma50.toFixed(2) ?? "N/A"}
+- SMA200: $${indicators4h.sma?.sma200.toFixed(2) ?? "N/A"}
+- Candle Pattern: ${indicators4h.candlePattern ?? "None"}
 - Confidence: ${indicators4h.confidence}
-    `.trim();
+
+**Backtest Summary (90d)**
+${backtest.summary}
+`.trim();
   } catch (err) {
     console.error(`❌ Failed to fetch price history for ${slug}`, err);
     return "Failed to fetch price history.";

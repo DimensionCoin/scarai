@@ -5,7 +5,8 @@ import {
   fetchTrendingCoins,
   fetchTopCoins,
   fetchCoinPriceHistory,
-  fetchBestTrade
+  fetchBestTrade,
+  fetchCategoryCoins,
 } from "@/lib/coinGecko";
 import {
   coinData,
@@ -19,10 +20,16 @@ import {
   unknown,
   tradingAdvice,
   investmentAdvice,
-  bestTradeToday
+  bestTradeToday,
+  categoryCoins,
 } from "@/lib/intentPrompts";
+import { matchCategory } from "@/lib/matchers/matchCategory";
+import { ChatMessage } from "@/types/chat";
 
-export async function getIntentData(parsed: ParsedQuery) {
+export async function getIntentData(
+  parsed: ParsedQuery,
+  chatHistory: ChatMessage[] = []
+) {
   const { intent, entities, context } = parsed;
 
   switch (intent) {
@@ -161,6 +168,50 @@ export async function getIntentData(parsed: ParsedQuery) {
       const data = await fetchBestTrade();
       return {
         systemPrompt: bestTradeToday,
+        data,
+      };
+    }
+    case "category_coins": {
+      const category = entities.category;
+      const isFollowUp = !category;
+
+      if (isFollowUp && chatHistory?.length) {
+        const previousCategoryMessage = chatHistory
+          .slice()
+          .reverse()
+          .find(
+            (m: ChatMessage) =>
+              m.role === "assistant" &&
+              m.content.includes("**Coins in This Category:**")
+          );
+
+        if (previousCategoryMessage) {
+          return {
+            systemPrompt: categoryCoins,
+            data: previousCategoryMessage.content,
+          };
+        }
+      }
+
+      // Otherwise it's a fresh category request
+      if (!category) {
+        return {
+          systemPrompt: categoryCoins,
+          data: "No category specified. Please provide a coin category like 'solana-ecosystem', 'real-world-assets', etc.",
+        };
+      }
+
+      const matched = await matchCategory(category);
+      if (!matched) {
+        return {
+          systemPrompt: categoryCoins,
+          data: `Unable to match category "${category}".`,
+        };
+      }
+
+      const data = await fetchCategoryCoins(matched);
+      return {
+        systemPrompt: categoryCoins,
         data,
       };
     }
