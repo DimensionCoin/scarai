@@ -30,11 +30,10 @@ export function macdCrossStrategy(
   let shortEntryIndex: number | null = null;
   let shortEntryPrice: number = 0;
 
-  const minHoldBars = 6; // Minimum candles before exiting
-  const cooldownBars = 10; // Bars to skip after a trade
+  const minHoldBars = 6;
+  const cooldownBars = 10;
+  const stopLossPercent = 10;
   let cooldownUntil = 0;
-
-  const stopLossPercent = 10; // 10% loss max
 
   for (let i = 1; i < macd.length; i++) {
     const idx = i + (prices.length - macd.length);
@@ -44,10 +43,9 @@ export function macdCrossStrategy(
     const crossedUp = prevDiff < 0 && currDiff > 0;
     const crossedDown = prevDiff > 0 && currDiff < 0;
 
-    // Cooldown check
     if (idx < cooldownUntil) continue;
 
-    // === LONG TRADE LOGIC ===
+    // === LONG ENTRY ===
     if (
       crossedUp &&
       (direction === "long" || direction === "both") &&
@@ -57,17 +55,20 @@ export function macdCrossStrategy(
       longEntryPrice = price;
     }
 
+    // === LONG EXIT ===
     if (longEntryIndex !== null) {
       const barsHeld = idx - longEntryIndex;
       const pnl = ((price - longEntryPrice) / longEntryPrice) * 100;
       const trendFading = Math.abs(currDiff) < Math.abs(prevDiff);
-
       const stopLossHit = pnl <= -stopLossPercent;
 
-      const shouldExit =
-        (barsHeld >= minHoldBars && (crossedDown || trendFading)) ||
-        stopLossHit ||
-        i === macd.length - 1;
+      let reason: Trade["exitReason"] | null = null;
+      if (stopLossHit) reason = "stop loss hit";
+      else if (crossedDown) reason = "MACD cross";
+      else if (trendFading) reason = "trend fade";
+      else if (i === macd.length - 1) reason = "time expiry";
+
+      const shouldExit = reason !== null && barsHeld >= minHoldBars;
 
       if (shouldExit) {
         trades.push({
@@ -77,6 +78,9 @@ export function macdCrossStrategy(
           exitPrice: price,
           profitPercent: pnl * leverage,
           direction: "long",
+          entryAction: "buy to open",
+          exitAction: "sell to close",
+          exitReason: reason!,
         });
 
         longEntryIndex = null;
@@ -84,7 +88,7 @@ export function macdCrossStrategy(
       }
     }
 
-    // === SHORT TRADE LOGIC ===
+    // === SHORT ENTRY ===
     if (
       crossedDown &&
       (direction === "short" || direction === "both") &&
@@ -94,16 +98,20 @@ export function macdCrossStrategy(
       shortEntryPrice = price;
     }
 
+    // === SHORT EXIT ===
     if (shortEntryIndex !== null) {
       const barsHeld = idx - shortEntryIndex;
       const pnl = ((shortEntryPrice - price) / shortEntryPrice) * 100;
       const trendFading = Math.abs(currDiff) < Math.abs(prevDiff);
       const stopLossHit = pnl <= -stopLossPercent;
 
-      const shouldExit =
-        (barsHeld >= minHoldBars && (crossedUp || trendFading)) ||
-        stopLossHit ||
-        i === macd.length - 1;
+      let reason: Trade["exitReason"] | null = null;
+      if (stopLossHit) reason = "stop loss hit";
+      else if (crossedUp) reason = "MACD cross";
+      else if (trendFading) reason = "trend fade";
+      else if (i === macd.length - 1) reason = "time expiry";
+
+      const shouldExit = reason !== null && barsHeld >= minHoldBars;
 
       if (shouldExit) {
         trades.push({
@@ -113,6 +121,9 @@ export function macdCrossStrategy(
           exitPrice: price,
           profitPercent: pnl * leverage,
           direction: "short",
+          entryAction: "sell to open",
+          exitAction: "buy to close",
+          exitReason: reason!,
         });
 
         shortEntryIndex = null;

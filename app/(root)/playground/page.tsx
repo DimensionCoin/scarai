@@ -442,7 +442,7 @@ export default function BacktestPlayground() {
               <BarChart2 className="h-5 w-5 text-indigo-400" />
             </div>
             <h1 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-indigo-500 bg-clip-text text-transparent">
-              Quant Playground
+              Quant Terminal
             </h1>
           </div>
 
@@ -572,7 +572,7 @@ export default function BacktestPlayground() {
                                 : "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30"
                               : "bg-black/20 text-zinc-400 border border-white/10 hover:bg-black/30"
                           }`}
-                          onChange={() =>
+                          onClick={() =>
                             setTradeDirection(opt as "long" | "short" | "both")
                           }
                         >

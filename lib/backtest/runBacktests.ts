@@ -1,7 +1,13 @@
-// lib/backtest/runBacktests.ts
-
 import { macdCrossStrategy } from "./strategies/macdCrossStrategy";
 import { rsiReversalStrategy } from "./strategies/rsiReversalStrategy";
+
+export type ExitReason =
+  | "MACD cross"
+  | "trend fade"
+  | "stop loss hit"
+  | "RSI target"
+  | "RSI exit"
+  | "time expiry";
 
 export type Trade = {
   entryIndex: number;
@@ -10,7 +16,12 @@ export type Trade = {
   exitPrice: number;
   profitPercent: number;
   direction: "long" | "short";
+  entryAction: "buy to open" | "sell to open";
+  exitAction: "sell to close" | "buy to close";
+  exitReason: ExitReason;
 };
+
+
 
 export type BacktestResult = {
   trades: Trade[];
@@ -37,8 +48,8 @@ export function runBacktests(prices: number[][]): {
     (p, c) => rsiReversalStrategy(p, c),
   ];
 
-  const results = strategies.map(
-    (strategy) => strategy(prices, { direction: "both", leverage: 1 }) // Default fallback
+  const results = strategies.map((strategy) =>
+    strategy(prices, { direction: "both", leverage: 1 })
   );
 
   const sorted = [...results].sort((a, b) => b.totalReturn - a.totalReturn);
