@@ -8,6 +8,7 @@ import {
   Newspaper,
   CoinsIcon,
   ChevronRight,
+  TrendingUp,
 } from "lucide-react";
 import { GiCrystalBall } from "react-icons/gi";
 
@@ -42,6 +43,11 @@ const Sidebar = () => {
       name: "Insights",
       href: "/news",
       icon: Newspaper,
+    },
+    {
+      name: "Playground",
+      href: "/playground",
+      icon: TrendingUp,
     },
   ];
 

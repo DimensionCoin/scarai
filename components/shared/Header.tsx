@@ -14,6 +14,7 @@ import {
   Search,
   Newspaper,
   CoinsIcon,
+  TrendingUp
 } from "lucide-react";
 import { GiCrystalBall } from "react-icons/gi";
 import { Button } from "../ui/button";
@@ -69,6 +70,11 @@ const Header = () => {
       name: "Insights",
       href: "/news",
       icon: Newspaper,
+    },
+    {
+      name: "Playground",
+      href: "/playground",
+      icon: TrendingUp,
     },
   ];
 

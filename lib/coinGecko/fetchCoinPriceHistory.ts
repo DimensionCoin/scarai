@@ -4,7 +4,6 @@ import {
   detectSupportResistance,
   SRLevel,
 } from "../indicators/detectSupportResistance";
-import { runBacktests } from "@/lib/backtest/runBacktests"; 
 
 function toTitleCase(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
@@ -104,7 +103,6 @@ export async function fetchCoinPriceHistory(slugRaw: string): Promise<string> {
       volumes
     );
 
-    const backtest = runBacktests(daily);
 
     return `
 **Technical Analysis for ${displayName}**
@@ -162,8 +160,7 @@ ${formatFib(indicatorsDaily.fibLevels)}
 - Candle Pattern: ${indicators4h.candlePattern ?? "None"}
 - Confidence: ${indicators4h.confidence}
 
-**Backtest Summary (90d)**
-${backtest.summary}
+
 `.trim();
   } catch (err) {
     console.error(`❌ Failed to fetch price history for ${slug}`, err);

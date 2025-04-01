@@ -9,6 +9,7 @@ export type Trade = {
   entryPrice: number;
   exitPrice: number;
   profitPercent: number;
+  direction: "long" | "short";
 };
 
 export type BacktestResult = {
@@ -18,16 +19,27 @@ export type BacktestResult = {
   strategyName: string;
 };
 
-type Strategy = (prices: number[][]) => BacktestResult;
+type Strategy = (
+  prices: number[][],
+  config: {
+    direction: "long" | "short" | "both";
+    leverage: number;
+  }
+) => BacktestResult;
 
 export function runBacktests(prices: number[][]): {
   bestStrategy: BacktestResult;
   summary: string;
   allResults: BacktestResult[];
 } {
-  const strategies: Strategy[] = [macdCrossStrategy, rsiReversalStrategy];
+  const strategies: Strategy[] = [
+    (p, c) => macdCrossStrategy(p, c),
+    (p, c) => rsiReversalStrategy(p, c),
+  ];
 
-  const results = strategies.map((strategy) => strategy(prices));
+  const results = strategies.map(
+    (strategy) => strategy(prices, { direction: "both", leverage: 1 }) // Default fallback
+  );
 
   const sorted = [...results].sort((a, b) => b.totalReturn - a.totalReturn);
   const best = sorted[0];

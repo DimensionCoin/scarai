@@ -1,22 +1,24 @@
 // lib/backtest/strategies/rsiReversalStrategy.ts
 
 import { calculateRSI } from "@/lib/indicators/calculateIndicators";
+import { BacktestResult, Trade } from "../runBacktests";
 
-type BacktestResult = {
-  trades: {
-    entryIndex: number;
-    exitIndex: number;
-    entryPrice: number;
-    exitPrice: number;
-    profitPercent: number;
-  }[];
-  totalReturn: number;
-  winRate: number;
-  strategyName: string;
+export const rsiReversalStrategyName = "RSI Reversal Strategy";
+
+type Config = {
+  direction: "long" | "short" | "both";
+  leverage: number;
 };
 
-export function rsiReversalStrategy(prices: number[][]): BacktestResult {
+export function rsiReversalStrategy(
+  prices: number[][],
+  config: Config
+): BacktestResult {
+  const { direction, leverage } = config;
   const rsiPeriod = 14;
+  const cooldownPeriod = 10; // bars to wait after trade before re-entering
+  const stopLossPercent = 5; // hard stop loss (as %)
+
   const rsiSeries: number[] = [];
 
   for (let i = 0; i < prices.length; i++) {
@@ -28,43 +30,98 @@ export function rsiReversalStrategy(prices: number[][]): BacktestResult {
     }
   }
 
-  const trades: BacktestResult["trades"] = [];
-  let inTrade = false;
-  let entryIndex = 0;
+  const trades: Trade[] = [];
+
+  let longEntryIndex: number | null = null;
+  let longEntryPrice = 0;
+
+  let shortEntryIndex: number | null = null;
+  let shortEntryPrice = 0;
+
+  let lastExitIndex = -cooldownPeriod; // to allow first entry
 
   for (let i = rsiPeriod; i < prices.length; i++) {
     const rsi = rsiSeries[i];
     const price = prices[i][1];
-    if (!inTrade && rsi < 30) {
-      // Entry condition: RSI oversold
-      inTrade = true;
-      entryIndex = i;
-    } else if (inTrade && rsi > 50) {
-      // Exit condition: RSI recovery
-      const entryPrice = prices[entryIndex][1];
-      const exitPrice = price;
-      const profitPercent = ((exitPrice - entryPrice) / entryPrice) * 100;
-      trades.push({
-        entryIndex,
-        exitIndex: i,
-        entryPrice,
-        exitPrice,
-        profitPercent,
-      });
-      inTrade = false;
+
+    // === LONG TRADES ===
+    if (
+      (direction === "long" || direction === "both") &&
+      longEntryIndex === null &&
+      i - lastExitIndex >= cooldownPeriod &&
+      rsi < 30
+    ) {
+      longEntryIndex = i;
+      longEntryPrice = price;
+    }
+
+    // Exit Long if RSI > 50 or Stop Loss
+    if (longEntryIndex !== null) {
+      const unrealizedLoss = ((price - longEntryPrice) / longEntryPrice) * 100;
+      const shouldStopLoss = unrealizedLoss < -stopLossPercent;
+
+      if (rsi > 50 || shouldStopLoss || i === prices.length - 1) {
+        const pnl =
+          ((price - longEntryPrice) / longEntryPrice) * 100 * leverage;
+        trades.push({
+          entryIndex: longEntryIndex,
+          exitIndex: i,
+          entryPrice: longEntryPrice,
+          exitPrice: price,
+          profitPercent: pnl,
+          direction: "long",
+        });
+
+        lastExitIndex = i;
+        longEntryIndex = null;
+      }
+    }
+
+    // === SHORT TRADES ===
+    if (
+      (direction === "short" || direction === "both") &&
+      shortEntryIndex === null &&
+      i - lastExitIndex >= cooldownPeriod &&
+      rsi > 70
+    ) {
+      shortEntryIndex = i;
+      shortEntryPrice = price;
+    }
+
+    // Exit Short if RSI < 50 or Stop Loss
+    if (shortEntryIndex !== null) {
+      const unrealizedLoss =
+        ((shortEntryPrice - price) / shortEntryPrice) * 100;
+      const shouldStopLoss = unrealizedLoss < -stopLossPercent;
+
+      if (rsi < 50 || shouldStopLoss || i === prices.length - 1) {
+        const pnl =
+          ((shortEntryPrice - price) / shortEntryPrice) * 100 * leverage;
+        trades.push({
+          entryIndex: shortEntryIndex,
+          exitIndex: i,
+          entryPrice: shortEntryPrice,
+          exitPrice: price,
+          profitPercent: pnl,
+          direction: "short",
+        });
+
+        lastExitIndex = i;
+        shortEntryIndex = null;
+      }
     }
   }
 
-  const totalReturn = trades.reduce((acc, t) => acc + t.profitPercent, 0);
+  const totalReturn = trades.reduce((sum, t) => sum + t.profitPercent, 0);
   const winRate =
     trades.length > 0
-      ? trades.filter((t) => t.profitPercent > 0).length / trades.length
+      ? (trades.filter((t) => t.profitPercent > 0).length / trades.length) * 100
       : 0;
 
   return {
     trades,
-    totalReturn,
-    winRate: parseFloat((winRate * 100).toFixed(2)),
-    strategyName: "RSI Reversal Strategy",
+    totalReturn: parseFloat(totalReturn.toFixed(2)),
+    winRate: parseFloat(winRate.toFixed(2)),
+    strategyName: rsiReversalStrategyName,
   };
 }

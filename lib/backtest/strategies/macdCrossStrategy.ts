@@ -1,10 +1,20 @@
-// lib/backtest/strategies/macdCrossStrategy.ts
-
 import { calculateEMA } from "@/utils/calculateEMA";
 import { BacktestResult, Trade } from "../runBacktests";
 
-export function macdCrossStrategy(prices: number[][]): BacktestResult {
+export const macdCrossStrategyName = "MACD Cross Strategy";
+
+type Config = {
+  direction: "long" | "short" | "both";
+  leverage: number;
+};
+
+export function macdCrossStrategy(
+  prices: number[][],
+  config: Config
+): BacktestResult {
+  const { direction, leverage } = config;
   const close = prices.map(([, price]) => price);
+
   if (close.length < 35) return emptyResult();
 
   const ema12 = calculateEMA(close, 12);
@@ -13,66 +23,115 @@ export function macdCrossStrategy(prices: number[][]): BacktestResult {
   const signal = calculateEMA(macd, 9);
 
   const trades: Trade[] = [];
-  let inTrade = false;
-  let entryIndex = 0;
+
+  let longEntryIndex: number | null = null;
+  let longEntryPrice: number = 0;
+
+  let shortEntryIndex: number | null = null;
+  let shortEntryPrice: number = 0;
+
+  const minHoldBars = 6; // Minimum candles before exiting
+  const cooldownBars = 10; // Bars to skip after a trade
+  let cooldownUntil = 0;
+
+  const stopLossPercent = 10; // 10% loss max
 
   for (let i = 1; i < macd.length; i++) {
-    const idx = i + (prices.length - macd.length); // align with original price index
+    const idx = i + (prices.length - macd.length);
     const price = prices[idx][1];
-
     const prevDiff = macd[i - 1] - signal[i - 1];
     const currDiff = macd[i] - signal[i];
-
     const crossedUp = prevDiff < 0 && currDiff > 0;
     const crossedDown = prevDiff > 0 && currDiff < 0;
 
-    if (crossedUp && !inTrade) {
-      entryIndex = idx;
-      inTrade = true;
+    // Cooldown check
+    if (idx < cooldownUntil) continue;
+
+    // === LONG TRADE LOGIC ===
+    if (
+      crossedUp &&
+      (direction === "long" || direction === "both") &&
+      longEntryIndex === null
+    ) {
+      longEntryIndex = idx;
+      longEntryPrice = price;
     }
 
-    if (crossedDown && inTrade) {
-      const entryPrice = prices[entryIndex][1];
-      const exitPrice = price;
-      const returnPct = ((exitPrice - entryPrice) / entryPrice) * 100;
+    if (longEntryIndex !== null) {
+      const barsHeld = idx - longEntryIndex;
+      const pnl = ((price - longEntryPrice) / longEntryPrice) * 100;
+      const trendFading = Math.abs(currDiff) < Math.abs(prevDiff);
 
-      trades.push({
-        entryIndex,
-        exitIndex: idx,
-        entryPrice,
-        exitPrice,
-        profitPercent: returnPct,
-      });
+      const stopLossHit = pnl <= -stopLossPercent;
 
-      inTrade = false;
+      const shouldExit =
+        (barsHeld >= minHoldBars && (crossedDown || trendFading)) ||
+        stopLossHit ||
+        i === macd.length - 1;
+
+      if (shouldExit) {
+        trades.push({
+          entryIndex: longEntryIndex,
+          exitIndex: idx,
+          entryPrice: longEntryPrice,
+          exitPrice: price,
+          profitPercent: pnl * leverage,
+          direction: "long",
+        });
+
+        longEntryIndex = null;
+        cooldownUntil = idx + cooldownBars;
+      }
     }
-  }
 
-  // Exit at last candle if still holding
-  if (inTrade) {
-    const lastIndex = prices.length - 1;
-    const entryPrice = prices[entryIndex][1];
-    const exitPrice = prices[lastIndex][1];
-    const returnPct = ((exitPrice - entryPrice) / entryPrice) * 100;
+    // === SHORT TRADE LOGIC ===
+    if (
+      crossedDown &&
+      (direction === "short" || direction === "both") &&
+      shortEntryIndex === null
+    ) {
+      shortEntryIndex = idx;
+      shortEntryPrice = price;
+    }
 
-    trades.push({
-      entryIndex,
-      exitIndex: lastIndex,
-      entryPrice,
-      exitPrice,
-      profitPercent: returnPct,
-    });
+    if (shortEntryIndex !== null) {
+      const barsHeld = idx - shortEntryIndex;
+      const pnl = ((shortEntryPrice - price) / shortEntryPrice) * 100;
+      const trendFading = Math.abs(currDiff) < Math.abs(prevDiff);
+      const stopLossHit = pnl <= -stopLossPercent;
+
+      const shouldExit =
+        (barsHeld >= minHoldBars && (crossedUp || trendFading)) ||
+        stopLossHit ||
+        i === macd.length - 1;
+
+      if (shouldExit) {
+        trades.push({
+          entryIndex: shortEntryIndex,
+          exitIndex: idx,
+          entryPrice: shortEntryPrice,
+          exitPrice: price,
+          profitPercent: pnl * leverage,
+          direction: "short",
+        });
+
+        shortEntryIndex = null;
+        cooldownUntil = idx + cooldownBars;
+      }
+    }
   }
 
   const totalReturn = trades.reduce((sum, t) => sum + t.profitPercent, 0);
-  const wins = trades.filter((t) => t.profitPercent > 0).length;
-  const winRate = trades.length ? (wins / trades.length) * 100 : 0;
+  const winRate =
+    trades.length > 0
+      ? (trades.filter((t) => t.profitPercent > 0).length / trades.length) * 100
+      : 0;
 
   return {
     trades,
     totalReturn: parseFloat(totalReturn.toFixed(2)),
     winRate: parseFloat(winRate.toFixed(2)),
-    strategyName: "MACD Cross Strategy",
+    strategyName: macdCrossStrategyName,
   };
 }
 
@@ -81,6 +140,6 @@ function emptyResult(): BacktestResult {
     trades: [],
     totalReturn: 0,
     winRate: 0,
-    strategyName: "MACD Cross Strategy",
+    strategyName: macdCrossStrategyName,
   };
 }
