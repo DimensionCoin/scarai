@@ -1,5 +1,7 @@
 import { fetchPythPrices } from "@/utils/fetchPythPrices";
 import { PYTH_PRICE_IDS } from "@/utils/pythPriceIds";
+import { calculateMarketPerformance } from "@/lib/indicators/calculateMarketPerformance";
+
 
 export async function fetchMarketData(): Promise<string> {
   const allIds = Object.values(PYTH_PRICE_IDS);
@@ -43,8 +45,13 @@ export async function fetchMarketData(): Promise<string> {
   const yieldCurveInverted = yields.US10Y < yields.US2Y;
   const usdtDeviation = Math.abs(1 - crypto.USDT);
 
+  const performance = await calculateMarketPerformance();
+
+
   return `
 ### Macro Market Snapshot
+
+${performance}
 
 **Interest Rates**
 - Effective Fed Funds Rate (EFFR): ${rates.EFFR.toFixed(2)}%

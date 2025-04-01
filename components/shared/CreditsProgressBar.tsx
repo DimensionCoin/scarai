@@ -10,8 +10,8 @@ type SubscriptionTierLimits = {
 
 const CREDIT_LIMITS: SubscriptionTierLimits = {
   free: 20,
-  basic: 1250,
-  premium: 2000,
+  basic: 1500,
+  premium: 3000,
 };
 
 export const CreditsProgressBar = () => {

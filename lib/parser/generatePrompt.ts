@@ -19,6 +19,7 @@ You are a crypto AI prompt parser. Given a user's message and recent context, re
   - "technical_analysis" → the user wants a chart read or a current indicator value
   - "explain_concept" → the user wants to learn about a concept like RSI, trendlines, analyzing charts etc..
   - "trending" → the user is asking about the top trending coins right now 
+  - "moonshot_allocation" → the user is asking about how to allocate funds to high risk assets to get the best return.
   - "compare" → the user wants to comapre the price performace of 2 coins
   - "unknown" → if unsure
 
@@ -63,6 +64,10 @@ User: "What are the top coins in the Solana ecosystem?"
 Example 9:
 User: "Give me coins in the real-world-assets category"
 → intent: "category_coins", entities: { category: "real-world-assets" }
+
+Example 10:
+User:  "whats the best coins to make a 5x gain in the next couple weeks", "how should i allocate funds for a moonshot or degen portfolio"
+→ intent: "moonshot_allocation"
 
 
 Input Message:

@@ -75,12 +75,12 @@ export async function POST(req: NextRequest) {
         let credits = 20;
         if (priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID) {
           tier = "basic";
-          credits = 1250;
+          credits = 1500;
         } else if (
           priceId === process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID
         ) {
           tier = "premium";
-          credits = 2000;
+          credits = 3000;
         } else {
           return NextResponse.json(
             { error: "Unknown Price ID" },
@@ -130,12 +130,12 @@ export async function POST(req: NextRequest) {
         let credits = 20;
         if (priceId === process.env.NEXT_PUBLIC_STRIPE_BASIC_PRICE_ID) {
           tier = "basic";
-          credits = 1250;
+          credits = 1500;
         } else if (
           priceId === process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID
         ) {
           tier = "premium";
-          credits = 2000;
+          credits = 3000;
         } else {
           return NextResponse.json(
             { error: "Unknown Price ID" },

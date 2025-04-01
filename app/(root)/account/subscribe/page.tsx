@@ -37,7 +37,7 @@ export default function SubscribePage() {
       name: "basic",
       description: "For beginner investors",
       price: "$25 USD",
-      credits: "1,250 credits monthly",
+      credits: "1,500 credits monthly",
       features: [
        
       ],
@@ -50,7 +50,7 @@ export default function SubscribePage() {
       name: "premium",
       description: "For experienced traders",
       price: "$30 USD",
-      credits: "2,000 credits monthly",
+      credits: "3,000 credits monthly",
       features: [
        
       ],

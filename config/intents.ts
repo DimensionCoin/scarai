@@ -11,6 +11,7 @@ export const VALID_INTENTS = [
   "market_data",
   "technical_analysis",
   "explain_concept",
+  "moonshot_allocation",
   "trending",
   "compare",
   "unknown",

@@ -71,9 +71,9 @@ const AccountPage = () => {
       case "free":
         return 20;
       case "basic":
-        return 1250;
+        return 1500;
       case "premium":
-        return 2000;
+        return 3000;
       default:
         return 100;
     }

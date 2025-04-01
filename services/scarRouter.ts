@@ -7,6 +7,7 @@ import {
   fetchCoinPriceHistory,
   fetchBestTrade,
   fetchCategoryCoins,
+  fetchMoonshotCandidates
 } from "@/lib/coinGecko";
 import {
   coinData,
@@ -22,6 +23,7 @@ import {
   investmentAdvice,
   bestTradeToday,
   categoryCoins,
+  moonshotAllocation
 } from "@/lib/intentPrompts";
 import { matchCategory } from "@/lib/matchers/matchCategory";
 import { ChatMessage } from "@/types/chat";
@@ -212,6 +214,14 @@ export async function getIntentData(
       const data = await fetchCategoryCoins(matched);
       return {
         systemPrompt: categoryCoins,
+        data,
+      };
+    }
+
+    case "moonshot_allocation": {
+      const data = await fetchMoonshotCandidates();
+      return {
+        systemPrompt: moonshotAllocation,
         data,
       };
     }
