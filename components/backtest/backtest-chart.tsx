@@ -340,8 +340,8 @@ export default function BacktestChart({
         </div>
       </div>
 
-      {/* Playback Controls */}
-      <div className="bg-black/30 border-t border-white/10 p-3">
+      {/* Playback Controls - ensure visibility on all devices */}
+      <div className="bg-black/30 border-t border-white/10 p-3 sticky bottom-0 z-10">
         <div className="flex items-center gap-2 mb-2">
           <button
             onClick={jumpToStart}
@@ -380,11 +380,15 @@ export default function BacktestChart({
           </div>
 
           <div className="flex items-center gap-1 bg-black/40 rounded px-2 py-1">
-            <span className="text-xs text-zinc-400">Speed:</span>
+            <span className="text-xs text-zinc-400 hidden sm:inline">
+              Speed:
+            </span>
+            <span className="text-xs text-zinc-400 sm:hidden">⚡</span>
             <select
               value={playbackSpeed}
               onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
-              className="bg-transparent text-xs text-zinc-300 border-none focus:ring-0"
+              className="bg-transparent text-xs text-zinc-300 border-none focus:ring-0 appearance-none pl-1 pr-4"
+              style={{ backgroundPosition: "right 0.2rem center" }}
             >
               <option value={0.5}>0.5x</option>
               <option value={1}>1x</option>

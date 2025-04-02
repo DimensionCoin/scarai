@@ -222,9 +222,10 @@ export default function BacktestPlayground() {
                     <TabsContent
                       value="chart"
                       className={`flex-1 flex flex-col p-0 m-0 ${
-                        isMobile && !fullscreen ? "max-h-[70vh]" : ""
+                        isMobile && !fullscreen ? "max-h-[80vh]" : ""
                       }`}
                     >
+                      {/* Ensure chart and playback controls are fully visible on mobile */}
                       <BacktestChart
                         prices={prices}
                         trades={trades}
