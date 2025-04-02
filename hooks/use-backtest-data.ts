@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import type { Trade, Summary } from "@/types/backtest";
+import { useUserContext } from "@/providers/UserProvider";
+import { useUser } from "@clerk/nextjs";
+import { usePathname } from "next/navigation";
 
 export function useBacktestData() {
   const [amount, setAmount] = useState(1000);
@@ -26,7 +29,9 @@ export function useBacktestData() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRequestPending, setIsRequestPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  const pathname = usePathname();
+  const { refreshUser } = useUserContext();
+  const { user } = useUser();
   // Log direction changes
   useEffect(() => {
     console.log("Trade direction changed to:", tradeDirection);
@@ -74,6 +79,7 @@ export function useBacktestData() {
       }
     }, 300);
     return () => clearTimeout(delay);
+     
   }, [query]);
 
   useEffect(() => {
@@ -102,36 +108,22 @@ export function useBacktestData() {
     return () => clearInterval(interval);
   }, [playing, prices, trades, completedTrades, playbackSpeed]);
 
-  // Modify the runBacktest function to accept an explicit direction parameter
   const runBacktest = async (
     coinId?: string,
     strategies?: string[],
     direction?: "long" | "short" | "both"
   ) => {
-    // Use passed parameters or fall back to state values
     const coinToUse = coinId || selectedCoin || query.trim();
     const strategiesToUse = strategies || selectedStrategies;
-
-    // CRITICAL: Use the explicitly passed direction or fall back to the state
-    // This ensures we're using the most up-to-date direction value
     const directionToUse = direction || tradeDirection;
 
-    console.log("Inside runBacktest function with params:", {
-      coinId: coinToUse,
-      strategiesCount: strategiesToUse.length,
-      isRequestPending,
-      direction: directionToUse, // Log the direction explicitly
-    });
-
     if (!coinToUse || strategiesToUse.length === 0 || isRequestPending) {
-      console.error("Cannot run backtest:", {
-        selectedCoin: coinToUse,
-        strategiesCount: strategiesToUse.length,
-        isRequestPending,
-      });
-      setError(
-        "Cannot run backtest: Please enter a coin name and select at least one strategy."
-      );
+      setError("Please enter a coin and select at least one strategy.");
+      return;
+    }
+
+    if (!user?.id) {
+      setError("User not authenticated.");
       return;
     }
 
@@ -139,7 +131,6 @@ export function useBacktestData() {
     setIsRequestPending(true);
     setError(null);
 
-    // Reset state to avoid stale data
     setPrices([]);
     setTrades([]);
     setSummary([]);
@@ -147,71 +138,48 @@ export function useBacktestData() {
     setPlayIndex(0);
 
     try {
-      // Log the exact parameters being sent to the API
-      console.log("Running backtest with EXACT params:", {
-        coin: coinToUse,
-        amount,
-        strategies: strategiesToUse,
-        direction: directionToUse, // Use the explicit direction
-        leverage,
-      });
-
-      // Add a cache-busting parameter to prevent caching issues
       const timestamp = Date.now();
-
-      // Create the request body object explicitly to ensure direction is set correctly
       const requestBody = {
         coin: coinToUse,
         amount,
         strategies: strategiesToUse,
-        direction: directionToUse, // Use the explicit direction
+        direction: directionToUse,
         leverage,
       };
 
-      console.log("REQUEST BODY STRINGIFIED:", JSON.stringify(requestBody));
-
-      const res = await fetch(`/api/backtest/run?t=${timestamp}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "no-cache, no-store, must-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
-          "X-Direction": directionToUse, // Add direction as a custom header as well
-        },
-        body: JSON.stringify(requestBody),
-        cache: "no-store", // Prevent caching
-      });
+      const res = await fetch(
+        `/api/backtest/run?userId=${encodeURIComponent(
+          user.id
+        )}&t=${timestamp}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
 
       if (!res.ok) {
         const errorText = await res.text();
-        console.error(`API Error (${res.status}):`, errorText);
         throw new Error(`API Error (${res.status}): ${errorText}`);
       }
 
       const data = await res.json();
 
-      // Make sure we're handling the API response correctly
       if (data.error) {
-        console.error("API Error:", data.error);
         setError(`API Error: ${data.error}`);
         return;
       }
 
-      console.log("Backtest results:", data);
-      console.log(
-        "Trade directions:",
-        data.trades.map((t: Trade) => t.direction)
-      );
-
-      // Initialize with empty arrays if data is missing
       setSummary(data.summary || []);
       setPrices(data.prices || []);
       setTrades(data.trades || []);
       setCompletedTrades([]);
       setPlayIndex(0);
+
+      refreshUser(); // ✅ Refresh credits in UI after usage
     } catch (error) {
-      console.error("Error running backtest:", error);
       setError(
         `Error running backtest: ${
           error instanceof Error ? error.message : String(error)
@@ -222,6 +190,7 @@ export function useBacktestData() {
       setIsRequestPending(false);
     }
   };
+
 
   const jumpToStart = () => {
     setPlayIndex(0);

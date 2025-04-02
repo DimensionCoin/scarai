@@ -15,13 +15,14 @@ import BacktestChart from "./backtest-chart";
 import { useBacktestData } from "@/hooks/use-backtest-data";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { useMobile } from "@/hooks/use-mobile"; // Import the useMobile hook
+import { useMobile } from "@/hooks/use-mobile"; 
 
 export default function BacktestPlayground() {
   const [fullscreen, setFullscreen] = useState(false);
   const [activeTab, setActiveTab] = useState("chart");
   const containerRef = useRef<HTMLDivElement>(null);
-  const isMobile = useMobile(); // Use the mobile detection hook
+  const isMobile = useMobile(); 
+
 
   const {
     selectedCoin,
@@ -88,7 +89,6 @@ export default function BacktestPlayground() {
 
     // Use the provided direction or fall back to the current direction
     const directionToUse = direction || tradeDirection;
-    console.log(`handleRunBacktest called with direction: ${directionToUse}`);
 
     // Run the backtest with the provided parameters
     return runBacktest(coinId, strategies, directionToUse);
@@ -97,14 +97,7 @@ export default function BacktestPlayground() {
   // Check if backtest data is loaded
   const hasBacktestData = prices.length > 0;
 
-  // Log the current trade direction and trades whenever they change
-  useEffect(() => {
-    console.log("Current trade direction:", tradeDirection);
-    console.log(
-      "Current trades:",
-      trades.map((t) => t.direction)
-    );
-  }, [tradeDirection, trades]);
+  
 
   return (
     <div

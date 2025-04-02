@@ -9,26 +9,17 @@ import { connect } from "@/db";
 export async function createUser(user: any) {
   try {
     await connect();
-
     const userData = {
       ...user,
-      credits: user.credits ?? 20, // Ensure credits is always set
+      credits: user.credits ?? 20,
     };
-
-    console.log("📢 Creating user with data:", userData); // Log user data
-
     const newUser = await User.create(userData);
-
-    console.log("✅ New user created in DB:", newUser); // Log saved user
-
     return JSON.parse(JSON.stringify(newUser));
   } catch (error) {
     console.error("❌ Error creating user:", error);
     throw new Error("Error creating user");
   }
 }
-
-
 
 /**
  * Fetch a user by Clerk ID.
@@ -45,25 +36,36 @@ export async function getUser(userId: string) {
 }
 
 /**
- * Deduct credits from a user.
- * @param {string} userId - The Clerk ID of the user.
- * @param {number} amount - The number of credits to deduct.
+ * Deduct credits from a user and optionally log usage.
  */
-export async function deductCredits(userId: string, amount: number = 1) {
+export async function deductCredits(
+  userId: string,
+  amount: number = 1,
+  log?: {
+    type: "coin" | "oracle" | "backtest";
+    coin?: string;
+    message?: string;
+  }
+) {
   try {
     await connect();
     const user = await User.findOne({ clerkId: userId });
 
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    if (user.credits < amount) {
-      throw new Error("Not enough credits");
-    }
+    if (!user) throw new Error("User not found");
+    if (user.credits < amount) throw new Error("Not enough credits");
 
     user.credits -= amount;
     await user.save();
+
+    if (log) {
+      await logCreditUsage({
+        userId,
+        type: log.type,
+        coin: log.coin,
+        message: log.message,
+        creditsUsed: amount,
+      });
+    }
 
     return JSON.parse(JSON.stringify(user));
   } catch (error) {
@@ -74,17 +76,13 @@ export async function deductCredits(userId: string, amount: number = 1) {
 
 /**
  * Add credits to a user.
- * @param {string} userId - The Clerk ID of the user.
- * @param {number} amount - The number of credits to add.
  */
 export async function addCredits(userId: string, amount: number) {
   try {
     await connect();
     const user = await User.findOne({ clerkId: userId });
 
-    if (!user) {
-      throw new Error("User not found");
-    }
+    if (!user) throw new Error("User not found");
 
     user.credits += amount;
     await user.save();
@@ -98,8 +96,6 @@ export async function addCredits(userId: string, amount: number) {
 
 /**
  * Check if the user has enough credits for an API request.
- * @param {string} userId - The Clerk ID of the user.
- * @returns {boolean} - True if the user has credits, false otherwise.
  */
 export async function hasEnoughCredits(
   userId: string,
@@ -109,9 +105,7 @@ export async function hasEnoughCredits(
     await connect();
     const user = await User.findOne({ clerkId: userId });
 
-    if (!user) {
-      throw new Error("User not found");
-    }
+    if (!user) throw new Error("User not found");
 
     return user.credits >= requiredCredits;
   } catch (error) {
@@ -128,7 +122,6 @@ export async function getUserTopCoins(userId: string) {
     await connect();
     const user = await User.findOne({ clerkId: userId });
     if (user && !user.topCoins) {
-      // If topCoins doesn't exist, update the user to add it.
       user.topCoins = [];
       await user.save();
     }
@@ -155,9 +148,7 @@ export async function updateUserTopCoins(userId: string, topCoins: string[]) {
       { new: true }
     );
 
-    if (!user) {
-      throw new Error("User not found");
-    }
+    if (!user) throw new Error("User not found");
 
     return user.topCoins;
   } catch (error) {
@@ -166,6 +157,9 @@ export async function updateUserTopCoins(userId: string, topCoins: string[]) {
   }
 }
 
+/**
+ * Log credit usage in the user's creditHistory array.
+ */
 export async function logCreditUsage({
   userId,
   type,
@@ -174,7 +168,7 @@ export async function logCreditUsage({
   creditsUsed,
 }: {
   userId: string;
-  type: "coin" | "oracle";
+  type: "coin" | "oracle" | "backtest";
   coin?: string;
   message?: string;
   creditsUsed: number;
@@ -184,7 +178,6 @@ export async function logCreditUsage({
     const user = await User.findOne({ clerkId: userId });
     if (!user) throw new Error("User not found");
 
-    // ✅ Initialize creditHistory if missing
     if (!Array.isArray(user.creditHistory)) {
       user.creditHistory = [];
     }
@@ -197,7 +190,6 @@ export async function logCreditUsage({
       timestamp: new Date(),
     });
 
-    // Keep only the latest 50 entries
     if (user.creditHistory.length > 50) {
       user.creditHistory = user.creditHistory.slice(0, 50);
     }
