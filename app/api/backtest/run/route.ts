@@ -1,47 +1,54 @@
-// api/backtest/run/route.ts
-
+// API route handler for running backtests against historical cryptocurrency data
 import { type NextRequest, NextResponse } from "next/server";
 import { fetchWithRetry } from "@/utils/fetchWithRetry";
 import { strategyRegistry } from "@/lib/backtest/strategies";
 import type { BacktestResult } from "@/lib/backtest/runBacktests";
+// Import strategy modules directly
+import { macdCrossStrategy } from "@/lib/backtest/strategies/macdCrossStrategy";
+import { rsiReversalStrategy } from "@/lib/backtest/strategies/rsiReversalStrategy";
 
 const COINGECKO_API_KEY = process.env.NEXT_PUBLIC_COINGECKO_API_KEY;
 
+// Define a type for strategy functions
+type StrategyFunction = (
+  prices: number[][],
+  config: {
+    direction: "long" | "short" | "both";
+    leverage: number;
+  }
+) => BacktestResult;
+
+// Create a mapping of strategy paths to their functions
+const strategyFunctions: Record<string, StrategyFunction> = {
+  macdCrossStrategy: macdCrossStrategy,
+  rsiReversalStrategy: rsiReversalStrategy,
+};
+
 export async function POST(req: NextRequest) {
   try {
-    // Read the request body as text first to debug
-    const bodyText = await req.text();
-    console.log("Raw request body:", bodyText);
-
-    // Parse the body manually
+    // Parse the request body
     let body;
     try {
+      const bodyText = await req.text();
       body = JSON.parse(bodyText);
-    } catch (e) {
-      console.error("Failed to parse request body:", e);
+    } catch {
+      // Empty catch block without parameter
       return NextResponse.json(
         { error: "Invalid JSON in request body" },
         { status: 400 }
       );
     }
 
-    // Extract parameters from the parsed body
+    // Extract parameters from the parsed body with defaults
     const {
-      coin,
-      amount,
-      strategies,
-      direction = "both", // Default to both if not provided
-      leverage = 1,
+      coin, // Cryptocurrency ID (e.g., "bitcoin")
+      amount, // Investment amount
+      strategies, // Array of strategy names to run
+      direction = "both", // Trade direction: "long", "short", or "both"
+      leverage = 1, // Leverage multiplier
     } = body;
 
-    // Log the raw request body after parsing
-    console.log("API received request body:", body);
-    console.log("API parsed direction parameter:", direction);
-    console.log(
-      "API request headers:",
-      Object.fromEntries(req.headers.entries())
-    );
-
+    // Validate required parameters
     if (!coin || !amount || !strategies?.length) {
       return NextResponse.json(
         { error: "Missing input data" },
@@ -49,24 +56,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Enhanced debug logging to verify the direction parameter
-    console.log(
-      "API received request with direction:",
-      direction,
-      "and leverage:",
-      leverage
-    );
-    console.log("Direction type:", typeof direction);
-    console.log(
-      "Is direction valid:",
-      direction === "long" || direction === "short" || direction === "both"
-    );
-
+    // Calculate date range for historical data (90 days)
     const now = Math.floor(Date.now() / 1000);
     const from = now - 90 * 24 * 60 * 60;
 
+    // Fetch historical price data from CoinGecko
     const url = `https://api.coingecko.com/api/v3/coins/${coin}/market_chart/range?vs_currency=usd&from=${from}&to=${now}&precision=full`;
-
     const res = await fetchWithRetry(url, {
       headers: {
         accept: "application/json",
@@ -78,64 +73,43 @@ export async function POST(req: NextRequest) {
       throw new Error(`CoinGecko error: ${res.status} — ${await res.text()}`);
     }
 
+    // Extract price data from response
     const data = await res.json();
     const prices = data.prices as number[][];
 
+    // Run each selected strategy against the price data
     const results: BacktestResult[] = [];
 
-    for (const name of strategies) {
-      const path = strategyRegistry[name];
-      if (!path) continue;
-
-      try {
-        // Import the strategy directly by name instead of using dynamic path
-        let stratFn;
-
-        if (path === "macdCrossStrategy") {
-          const { macdCrossStrategy } = await import(
-            "@/lib/backtest/strategies/macdCrossStrategy"
-          );
-          stratFn = macdCrossStrategy;
-        } else if (path === "rsiReversalStrategy") {
-          const { rsiReversalStrategy } = await import(
-            "@/lib/backtest/strategies/rsiReversalStrategy"
-          );
-          stratFn = rsiReversalStrategy;
-        } else {
-          console.warn(`Unknown strategy: ${name} (${path})`);
-          continue;
+    // Process strategies in parallel for better performance
+    await Promise.all(
+      strategies.map(async (strategyName: string) => {
+        // Check if the strategy exists in our registry
+        if (!(strategyName in strategyRegistry)) {
+          console.warn(`Strategy not found in registry: ${strategyName}`);
+          return;
         }
 
-        if (stratFn) {
-          // Explicitly pass the direction and leverage to the strategy
-          console.log(
-            `Running strategy ${name} with direction: "${direction}", leverage: ${leverage}`
-          );
+        const path =
+          strategyRegistry[strategyName as keyof typeof strategyRegistry];
 
-          const rawResult = stratFn(prices, {
-            direction: direction,
-            leverage: leverage,
+        // Get the strategy function from our mapping
+        const strategyFn = strategyFunctions[path];
+
+        if (typeof strategyFn === "function") {
+          // Run the strategy with the specified direction and leverage
+          const result = strategyFn(prices, {
+            direction,
+            leverage,
           });
 
-          if (!rawResult?.trades?.length) {
-            console.warn(`⚠️ Strategy [${name}] produced no trades.`);
-          }
-
-          // Log the trade directions to verify filtering
-          console.log(
-            `Strategy ${name} returned trades with directions: ${rawResult.trades
-              .map((t) => t.direction)
-              .join(", ")}`
-          );
-
-          results.push(rawResult);
+          results.push(result);
+        } else {
+          console.warn(`Strategy function not found for: ${path}`);
         }
-      } catch (error) {
-        console.error(`Error loading strategy ${name} (${path}):`, error);
-      }
-    }
+      })
+    );
 
-    // Collect all trades from all strategies
+    // Combine trades from all strategies and add strategy name to each trade
     let allTrades = results.flatMap((r) =>
       r.trades.map((t) => ({
         ...t,
@@ -146,33 +120,19 @@ export async function POST(req: NextRequest) {
       }))
     );
 
-    // CRITICAL: Force filter trades to match the selected direction
+    // Filter trades to match the selected direction if not "both"
     if (direction !== "both") {
-      console.log(
-        `CRITICAL FILTERING: Before ${allTrades.length} trades, direction=${direction}`
-      );
-
-      // Double-check that all trades match the selected direction
       allTrades = allTrades.filter((t) => t.direction === direction);
-
-      console.log(
-        `CRITICAL FILTERING: After ${allTrades.length} ${direction} trades`
-      );
     }
 
-    // Log all trade directions before returning
-    console.log(
-      `Final trades directions: ${allTrades.map((t) => t.direction).join(", ")}`
-    );
-
-    // Calculate summary based on the filtered trades
+    // Calculate summary statistics for each strategy
     const summary = results.map((r) => {
-      // Filter trades for this strategy by direction (should already be filtered, but double-check)
+      // Get trades for this specific strategy
       const strategyTrades = allTrades.filter(
         (t) => t.strategy === r.strategyName
       );
 
-      // Recalculate metrics based on filtered trades
+      // Calculate performance metrics
       const totalReturn = strategyTrades.reduce(
         (sum, t) => sum + t.profitPercent,
         0
@@ -193,7 +153,7 @@ export async function POST(req: NextRequest) {
       };
     });
 
-    // Add a response header to prevent caching
+    // Set cache control headers to prevent caching
     const headers = new Headers();
     headers.append(
       "Cache-Control",
@@ -202,13 +162,13 @@ export async function POST(req: NextRequest) {
     headers.append("Pragma", "no-cache");
     headers.append("Expires", "0");
 
-    // Add the direction to the response to ensure it's preserved
+    // Return the backtest results
     return new NextResponse(
       JSON.stringify({
-        summary,
-        prices,
-        trades: allTrades,
-        direction, // Include the direction in the response
+        summary, // Performance summary for each strategy
+        prices, // Historical price data
+        trades: allTrades, // All trades generated by the strategies
+        direction, // The direction used for the backtest
       }),
       {
         status: 200,
@@ -216,8 +176,8 @@ export async function POST(req: NextRequest) {
       }
     );
   } catch (err) {
+    // Handle errors and return appropriate response
     const error = err instanceof Error ? err : new Error("Unknown error");
-    console.error("❌ Backtest error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

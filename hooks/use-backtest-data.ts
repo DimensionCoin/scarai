@@ -109,7 +109,7 @@ export function useBacktestData() {
     direction?: "long" | "short" | "both"
   ) => {
     // Use passed parameters or fall back to state values
-    const coinToUse = coinId || selectedCoin;
+    const coinToUse = coinId || selectedCoin || query.trim();
     const strategiesToUse = strategies || selectedStrategies;
 
     // CRITICAL: Use the explicitly passed direction or fall back to the state
@@ -130,7 +130,7 @@ export function useBacktestData() {
         isRequestPending,
       });
       setError(
-        "Cannot run backtest: Please select a coin and at least one strategy."
+        "Cannot run backtest: Please enter a coin name and select at least one strategy."
       );
       return;
     }

@@ -111,9 +111,9 @@ export default function BacktestPlayground() {
       ref={containerRef}
       className={`${
         fullscreen
-          ? "fixed inset-0 z-50 w-screen h-screen bg-black/90 backdrop-blur-xl p-4 overflow-hidden"
+          ? "fixed inset-0 z-50 w-screen h-screen bg-black/90 backdrop-blur-xl p-4 overflow-hidden "
           : "p-1"
-      } ${!fullscreen && isMobile ? "pb-14" : ""}`} // Add bottom padding on mobile when not fullscreen
+      } ${!fullscreen && isMobile ? "pb-14" : "pb-10"}`} // Add bottom padding on mobile when not fullscreen
     >
       <div
         className={`bg-black/30 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden ${
@@ -121,7 +121,7 @@ export default function BacktestPlayground() {
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-2 border-b border-white/10 bg-black/20">
+        <div className="flex items-center justify-between p-2 border-b border-white/10 bg-black/10">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
               <BarChart2 className="h-5 w-5 text-indigo-400" />

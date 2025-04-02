@@ -233,22 +233,20 @@ export default function BacktestControls({
               <Input
                 value={query}
                 onChange={(e) => {
-                  setQuery(e.target.value);
-                  // Only show dropdown if we don't already have a selected coin
-                  if (!selectedCoin) {
-                    // Keep the coins array for dropdown
-                  } else {
-                    // Clear coins array if we already have a selection
-                    setCoins([]);
+                  const newQuery = e.target.value;
+                  setQuery(newQuery);
+
+                  // Show dropdown only when typing
+                  if (newQuery.trim() !== "") {
+                    // Fetch coins as user types
+                    // The API call is handled in the useEffect in useBacktestData
                   }
                 }}
-                onClick={() => {
-                  // Clear selection when clicking on the input to search again
-                  if (selectedCoin) {
-                    setSelectedCoin("");
-                    setSelectedCoinName("");
-                    setQuery("");
-                  }
+                onBlur={() => {
+                  // Hide dropdown when clicking outside
+                  setTimeout(() => {
+                    setCoins([]);
+                  }, 200); // Small delay to allow click on dropdown item
                 }}
                 placeholder="e.g. solana, eth"
                 className="bg-black/30 border-white/10 text-white pl-7 focus-visible:ring-teal-500 focus-visible:border-teal-500/50"
@@ -265,7 +263,7 @@ export default function BacktestControls({
                         setSelectedCoin(coin.id);
                         setSelectedCoinName(coin.name);
                         setQuery(coin.name);
-                        setCoins([]);
+                        setCoins([]); // Hide dropdown immediately after selection
                       }}
                     >
                       {coin.image && (
@@ -302,7 +300,9 @@ export default function BacktestControls({
           <div className="border-2 border-amber-500/50 rounded-lg p-3 bg-amber-500/5">
             <label className="text-xs text-amber-400 font-bold mb-2 flex justify-between">
               <span>TRADE DIRECTION</span>
-              
+              <span className="text-[10px]">
+                ONLY selected trades will be generated
+              </span>
             </label>
             <div className="grid grid-cols-3 gap-1">
               {["long", "short", "both"].map((opt) => (
@@ -505,13 +505,26 @@ export default function BacktestControls({
 
             if (!hasBacktestData) {
               // If no backtest data, run a new backtest
-              if (selectedCoin && selectedStrategies.length > 0 && !isLoading) {
+              if (query && selectedStrategies.length > 0 && !isLoading) {
+                // If we have a query but no selectedCoin, use the query as is
+                if (!selectedCoin && query.trim()) {
+                  console.log(
+                    "Running backtest with manually entered coin:",
+                    query
+                  );
+                  // The API will throw an error if the coin doesn't exist
+                }
+
                 console.log("Running backtest with direction:", localDirection);
                 // Pass the local direction explicitly to runBacktest
-                runBacktest(selectedCoin, selectedStrategies, localDirection);
+                runBacktest(
+                  selectedCoin || query.trim(),
+                  selectedStrategies,
+                  localDirection
+                );
               } else {
                 setError(
-                  "Cannot run backtest: Please select a coin and at least one strategy."
+                  "Cannot run backtest: Please enter a coin name and select at least one strategy."
                 );
               }
             } else {
@@ -521,7 +534,7 @@ export default function BacktestControls({
           }}
           disabled={
             (!hasBacktestData &&
-              (!selectedCoin || !selectedStrategies.length)) ||
+              (!query.trim() || !selectedStrategies.length)) ||
             isLoading
           }
           className="flex-1 bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 text-white py-4"
