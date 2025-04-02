@@ -1,0 +1,293 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { BarChart2, TrendingUp, BarChart, AlertCircle } from "lucide-react";
+import BacktestControls from "./backtest-controls";
+import BacktestResults from "./backtest-results";
+import BacktestChart from "./backtest-chart";
+import { useBacktestData } from "@/hooks/use-backtest-data";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+
+export default function BacktestPlayground() {
+  const [fullscreen, setFullscreen] = useState(false);
+  const [activeTab, setActiveTab] = useState("chart");
+
+  const {
+    selectedCoin,
+    // Remove selectedCoinName as it's not used
+    selectedStrategies,
+    amount,
+    tradeDirection,
+    // Remove leverage as it's not used
+    prices,
+    trades,
+    summary,
+    playIndex,
+    setPlayIndex,
+    playing,
+    setPlaying,
+    completedTrades,
+    activeTrades,
+    isLoading,
+    runBacktest,
+    currentPrice,
+    currentDate,
+    currentTime,
+    totalProfit,
+    winRate,
+    playbackSpeed,
+    setPlaybackSpeed,
+    jumpToStart,
+    jumpToEnd,
+    error,
+  } = useBacktestData();
+
+  // Add this function to handle running a new backtest
+  const handleRunBacktest = (
+    coinId?: string,
+    strategies?: string[],
+    direction?: "long" | "short" | "both"
+  ) => {
+    // Stop playback if it's running
+    if (playing) {
+      setPlaying(false);
+    }
+
+    // Use the provided direction or fall back to the current direction
+    const directionToUse = direction || tradeDirection;
+    console.log(`handleRunBacktest called with direction: ${directionToUse}`);
+
+    // Run the backtest with the provided parameters
+    return runBacktest(coinId, strategies, directionToUse);
+  };
+
+  // Check if backtest data is loaded
+  const hasBacktestData = prices.length > 0;
+
+  // Log the current trade direction and trades whenever they change
+  useEffect(() => {
+    console.log("Current trade direction:", tradeDirection);
+    console.log(
+      "Current trades:",
+      trades.map((t) => t.direction)
+    );
+  }, [tradeDirection, trades]);
+
+  return (
+    <div
+      className={`p-4 ${
+        fullscreen ? "fixed inset-0 z-50 bg-black/90 backdrop-blur-xl" : ""
+      }`}
+    >
+      <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden">
+        {/* Header - Keeping this part similar */}
+        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/20">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
+              <BarChart2 className="h-5 w-5 text-indigo-400" />
+            </div>
+            <h1 className="text-xl font-bold bg-gradient-to-r from-teal-400 to-indigo-500 bg-clip-text text-transparent">
+              Quant Terminal
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {prices.length > 0 && (
+              <div className="text-xs text-zinc-400 bg-black/30 px-2 py-1 rounded-full flex items-center gap-1">
+                <span>
+                  {currentDate} {currentTime}
+                </span>
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setFullscreen(!fullscreen)}
+              className="text-zinc-400 hover:text-zinc-200"
+            >
+              {fullscreen ? (
+                <span className="sr-only">Exit fullscreen</span>
+              ) : (
+                <span className="sr-only">Enter fullscreen</span>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-0">
+          {/* Left Sidebar - Controls */}
+          <div className="lg:col-span-1 border-r border-white/10 bg-black/10 p-4">
+            <BacktestControls
+              isLoading={isLoading}
+              runBacktest={handleRunBacktest}
+              playing={playing}
+              setPlaying={setPlaying}
+              hasBacktestData={hasBacktestData}
+            />
+          </div>
+
+          {/* Main Content Area */}
+          <div className="lg:col-span-3 flex flex-col">
+            {prices.length > 0 ? (
+              <>
+                <Tabs
+                  value={activeTab}
+                  onValueChange={setActiveTab}
+                  className="flex-1 flex flex-col"
+                >
+                  <div className="border-b border-white/10 bg-black/20 px-4">
+                    <TabsList className="bg-transparent border-b-0">
+                      <TabsTrigger
+                        value="chart"
+                        className="data-[state=active]:bg-black/20 data-[state=active]:text-teal-400 data-[state=active]:shadow-none rounded-t-lg rounded-b-none border-b-2 data-[state=active]:border-teal-500 border-transparent"
+                      >
+                        Chart
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="trades"
+                        className="data-[state=active]:bg-black/20 data-[state=active]:text-teal-400 data-[state=active]:shadow-none rounded-t-lg rounded-b-none border-b-2 data-[state=active]:border-teal-500 border-transparent"
+                      >
+                        Trades
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="results"
+                        className="data-[state=active]:bg-black/20 data-[state=active]:text-teal-400 data-[state=active]:shadow-none rounded-t-lg rounded-b-none border-b-2 data-[state=active]:border-teal-500 border-transparent"
+                      >
+                        Results
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="education"
+                        className="data-[state=active]:bg-black/20 data-[state=active]:text-teal-400 data-[state=active]:shadow-none rounded-t-lg rounded-b-none border-b-2 data-[state=active]:border-teal-500 border-transparent"
+                      >
+                        Learn
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+
+                  {activeTab === "chart" ? (
+                    <TabsContent
+                      value="chart"
+                      className="flex-1 flex flex-col p-0 m-0"
+                    >
+                      <BacktestChart
+                        prices={prices}
+                        trades={trades}
+                        playIndex={playIndex}
+                        setPlayIndex={setPlayIndex}
+                        playing={playing}
+                        setPlaying={setPlaying}
+                        playbackSpeed={playbackSpeed}
+                        setPlaybackSpeed={setPlaybackSpeed}
+                        jumpToStart={jumpToStart}
+                        jumpToEnd={jumpToEnd}
+                        currentPrice={currentPrice}
+                        totalProfit={totalProfit}
+                        activeTrades={activeTrades}
+                      />
+                    </TabsContent>
+                  ) : null}
+
+                  <TabsContent
+                    value="trades"
+                    className="flex-1 p-0 m-0 overflow-auto"
+                  >
+                    <BacktestResults
+                      view="trades"
+                      activeTrades={activeTrades}
+                      completedTrades={completedTrades}
+                      currentPrice={currentPrice}
+                    />
+                  </TabsContent>
+
+                  <TabsContent
+                    value="results"
+                    className="flex-1 p-0 m-0 overflow-auto"
+                  >
+                    <BacktestResults
+                      view="results"
+                      summary={summary}
+                      totalProfit={totalProfit}
+                      winRate={winRate}
+                      completedTrades={completedTrades}
+                      amount={amount}
+                    />
+                  </TabsContent>
+
+                  <TabsContent
+                    value="education"
+                    className="flex-1 p-0 m-0 overflow-auto"
+                  >
+                    <BacktestResults
+                      view="education"
+                      selectedStrategies={selectedStrategies}
+                      trades={trades}
+                    />
+                  </TabsContent>
+                </Tabs>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center bg-black/20">
+                <div className="text-center p-6 max-w-2xl">
+                  <BarChart2 className="h-16 w-16 mx-auto mb-4 text-zinc-700" />
+                  <h2 className="text-xl font-medium text-zinc-400 mb-2">
+                    Cryptocurrency Backtesting Platform
+                  </h2>
+                  <p className="text-zinc-500 mx-auto mb-6">
+                    Test trading strategies against historical cryptocurrency
+                    price data. Select a coin, choose your strategies, and
+                    analyze performance metrics to refine your trading approach.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-left">
+                    <div className="bg-black/30 rounded-lg p-3 border border-white/10">
+                      <h3 className="text-sm font-medium text-zinc-300 mb-2 flex items-center gap-2">
+                        <TrendingUp className="h-3.5 w-3.5 text-teal-400" />
+                        Available Strategies
+                      </h3>
+                      <ul className="text-xs text-zinc-400 space-y-1.5">
+                        <li>• MACD Cross Strategy - Trend following</li>
+                        <li>• RSI Reversal Strategy - Mean reversion</li>
+                      </ul>
+                    </div>
+                    <div className="bg-black/30 rounded-lg p-3 border border-white/10">
+                      <h3 className="text-sm font-medium text-zinc-300 mb-2 flex items-center gap-2">
+                        <BarChart className="h-3.5 w-3.5 text-teal-400" />
+                        Performance Metrics
+                      </h3>
+                      <ul className="text-xs text-zinc-400 space-y-1.5">
+                        <li>• Win rate and total return</li>
+                        <li>• Trade-by-trade analysis</li>
+                        <li>• Strategy comparison</li>
+                        <li>• Exit reason statistics</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div className="flex justify-center">
+                    <Button
+                      onClick={() => handleRunBacktest()}
+                      disabled={
+                        !selectedCoin || !selectedStrategies.length || isLoading
+                      }
+                      className="bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500"
+                    >
+                      {isLoading ? "Running..." : "Run Backtest"}
+                    </Button>
+                  </div>
+                  {error && (
+                    <div className="mt-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-lg text-rose-400 text-xs">
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertCircle className="h-3.5 w-3.5" />
+                        <span className="font-medium">Error</span>
+                      </div>
+                      <p>{error}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

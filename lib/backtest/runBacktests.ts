@@ -21,8 +21,6 @@ export type Trade = {
   exitReason: ExitReason;
 };
 
-
-
 export type BacktestResult = {
   trades: Trade[];
   totalReturn: number;
