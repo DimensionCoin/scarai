@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BarChart2, TrendingUp, BarChart, AlertCircle } from "lucide-react";
+import { BarChart2, TrendingUp, BarChart, AlertCircle, FullscreenIcon, XIcon } from "lucide-react";
 import BacktestControls from "./backtest-controls";
 import BacktestResults from "./backtest-results";
 import BacktestChart from "./backtest-chart";
@@ -76,13 +76,13 @@ export default function BacktestPlayground() {
 
   return (
     <div
-      className={`p-4 ${
-        fullscreen ? "fixed inset-0 z-50 bg-black/90 backdrop-blur-xl" : ""
+      className={`p-1 ${
+        fullscreen ? "fixed inset-0 z-50 bg-black/60 backdrop-blur-xl" : ""
       }`}
     >
       <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden">
-        {/* Header - Keeping this part similar */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10 bg-black/20">
+        {/* Header */}
+        <div className="flex items-center justify-between p-2 border-b border-white/10 bg-black/20">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-indigo-500/20 flex items-center justify-center">
               <BarChart2 className="h-5 w-5 text-indigo-400" />
@@ -101,15 +101,14 @@ export default function BacktestPlayground() {
               </div>
             )}
             <Button
-              variant="ghost"
               size="icon"
               onClick={() => setFullscreen(!fullscreen)}
-              className="text-zinc-400 hover:text-zinc-200"
+              className="text-zinc-100 hover:text-zinc-200"
             >
               {fullscreen ? (
-                <span className="sr-only">Exit fullscreen</span>
+                <XIcon/>
               ) : (
-                <span className="sr-only">Enter fullscreen</span>
+                <FullscreenIcon/>
               )}
             </Button>
           </div>
@@ -117,7 +116,7 @@ export default function BacktestPlayground() {
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-0">
           {/* Left Sidebar - Controls */}
-          <div className="lg:col-span-1 border-r border-white/10 bg-black/10 p-4">
+          <div className="lg:col-span-1 border-r border-white/10 bg-black/10 p-2">
             <BacktestControls
               isLoading={isLoading}
               runBacktest={handleRunBacktest}

@@ -302,9 +302,7 @@ export default function BacktestControls({
           <div className="border-2 border-amber-500/50 rounded-lg p-3 bg-amber-500/5">
             <label className="text-xs text-amber-400 font-bold mb-2 flex justify-between">
               <span>TRADE DIRECTION</span>
-              <span className="text-[10px]">
-                ONLY selected trades will be generated
-              </span>
+              
             </label>
             <div className="grid grid-cols-3 gap-1">
               {["long", "short", "both"].map((opt) => (

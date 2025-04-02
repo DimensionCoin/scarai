@@ -4,7 +4,7 @@ import BacktestPlayground from "@/components/backtest/backtest-playground";
 
 export default function PlaygroundPage() {
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen">
       <BacktestPlayground />
     </div>
   );
