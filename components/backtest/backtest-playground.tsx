@@ -1,7 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { BarChart2, TrendingUp, BarChart, AlertCircle, FullscreenIcon, XIcon } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import {
+  BarChart2,
+  TrendingUp,
+  BarChart,
+  AlertCircle,
+  Maximize2,
+  X,
+} from "lucide-react";
 import BacktestControls from "./backtest-controls";
 import BacktestResults from "./backtest-results";
 import BacktestChart from "./backtest-chart";
@@ -12,14 +19,13 @@ import { Button } from "@/components/ui/button";
 export default function BacktestPlayground() {
   const [fullscreen, setFullscreen] = useState(false);
   const [activeTab, setActiveTab] = useState("chart");
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const {
     selectedCoin,
-    // Remove selectedCoinName as it's not used
     selectedStrategies,
     amount,
     tradeDirection,
-    // Remove leverage as it's not used
     prices,
     trades,
     summary,
@@ -42,6 +48,30 @@ export default function BacktestPlayground() {
     jumpToEnd,
     error,
   } = useBacktestData();
+
+  // Handle fullscreen mode
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && fullscreen) {
+        setFullscreen(false);
+      }
+    };
+
+    // Add event listener for ESC key to exit fullscreen
+    document.addEventListener("keydown", handleEsc);
+
+    // Handle body scroll locking when in fullscreen
+    if (fullscreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleEsc);
+      document.body.style.overflow = "";
+    };
+  }, [fullscreen]);
 
   // Add this function to handle running a new backtest
   const handleRunBacktest = (
@@ -76,11 +106,18 @@ export default function BacktestPlayground() {
 
   return (
     <div
-      className={`p-1 ${
-        fullscreen ? "fixed inset-0 z-50 bg-black/60 backdrop-blur-xl" : ""
+      ref={containerRef}
+      className={`${
+        fullscreen
+          ? "fixed inset-0 z-50 w-screen h-screen bg-black/90 backdrop-blur-xl p-4 overflow-hidden"
+          : "p-1"
       }`}
     >
-      <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden">
+      <div
+        className={`bg-black/30 backdrop-blur-md border border-white/10 rounded-xl overflow-hidden ${
+          fullscreen ? "h-full flex flex-col" : ""
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-2 border-b border-white/10 bg-black/20">
           <div className="flex items-center gap-3">
@@ -104,19 +141,28 @@ export default function BacktestPlayground() {
               size="icon"
               onClick={() => setFullscreen(!fullscreen)}
               className="text-zinc-100 hover:text-zinc-200"
+              aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
             >
               {fullscreen ? (
-                <XIcon/>
+                <X className="h-4 w-4" />
               ) : (
-                <FullscreenIcon/>
+                <Maximize2 className="h-4 w-4" />
               )}
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-0">
+        <div
+          className={`grid grid-cols-1 lg:grid-cols-4 gap-0 ${
+            fullscreen ? "flex-1 overflow-hidden" : ""
+          }`}
+        >
           {/* Left Sidebar - Controls */}
-          <div className="lg:col-span-1 border-r border-white/10 bg-black/10 p-2">
+          <div
+            className={`lg:col-span-1 border-r border-white/10 bg-black/10 p-2 ${
+              fullscreen ? "overflow-y-auto" : ""
+            }`}
+          >
             <BacktestControls
               isLoading={isLoading}
               runBacktest={handleRunBacktest}
@@ -127,7 +173,11 @@ export default function BacktestPlayground() {
           </div>
 
           {/* Main Content Area */}
-          <div className="lg:col-span-3 flex flex-col">
+          <div
+            className={`lg:col-span-3 flex flex-col ${
+              fullscreen ? "overflow-hidden" : ""
+            }`}
+          >
             {prices.length > 0 ? (
               <>
                 <Tabs
@@ -189,7 +239,11 @@ export default function BacktestPlayground() {
 
                   <TabsContent
                     value="trades"
-                    className="flex-1 p-0 m-0 overflow-auto"
+                    className={`flex-1 p-0 m-0 ${
+                      fullscreen
+                        ? "overflow-y-auto max-h-[calc(100vh-12rem)]"
+                        : "overflow-auto"
+                    }`}
                   >
                     <BacktestResults
                       view="trades"
@@ -201,7 +255,11 @@ export default function BacktestPlayground() {
 
                   <TabsContent
                     value="results"
-                    className="flex-1 p-0 m-0 overflow-auto"
+                    className={`flex-1 p-0 m-0 ${
+                      fullscreen
+                        ? "overflow-y-auto max-h-[calc(100vh-12rem)]"
+                        : "overflow-auto"
+                    }`}
                   >
                     <BacktestResults
                       view="results"
@@ -215,7 +273,11 @@ export default function BacktestPlayground() {
 
                   <TabsContent
                     value="education"
-                    className="flex-1 p-0 m-0 overflow-auto"
+                    className={`flex-1 p-0 m-0 ${
+                      fullscreen
+                        ? "overflow-y-auto max-h-[calc(100vh-12rem)]"
+                        : "overflow-auto"
+                    }`}
                   >
                     <BacktestResults
                       view="education"
