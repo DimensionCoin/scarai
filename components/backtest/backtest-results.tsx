@@ -441,15 +441,13 @@ export default function BacktestResults({
                         </span>
                       </div>
                       <div>
-                        <span className="text-zinc-500">Profit:</span>{" "}
+                        <span className="text-zinc-500">Leveraged Profit:</span>{" "}
                         <span
                           className={`${
-                            Number(s.profit) >= 0
-                              ? "text-teal-400"
-                              : "text-rose-400"
+                            totalProfit >= 0 ? "text-teal-400" : "text-rose-400"
                           }`}
                         >
-                          {formatCurrency(Number(s.profit))}
+                          {formatCurrency((amount || 0) * (totalProfit / 100))}
                         </span>
                       </div>
                     </div>
@@ -509,7 +507,112 @@ export default function BacktestResults({
             Strategy Insights
           </h3>
 
-          {selectedStrategies.includes("MACD Cross Strategy") && (
+          {/* Add strategy overview section */}
+          <div className="bg-black/30 rounded-lg border border-white/10 p-3 mb-3">
+            <h4 className="text-xs font-medium text-zinc-300 mb-2">
+              Trading Strategy Description
+            </h4>
+            <p className="text-xs text-zinc-400">
+              {selectedStrategies.length > 0 || trades.length > 0 ? (
+                <>
+                  <span className="font-medium text-teal-400 block mb-2">
+                    {selectedStrategies.length === 1 ||
+                    (selectedStrategies.length === 0 &&
+                      trades.length > 0 &&
+                      trades[0]?.strategy)
+                      ? `This backtest uses the ${
+                          selectedStrategies[0] || trades[0]?.strategy
+                        } exclusively.`
+                      : `This backtest combines ${
+                          selectedStrategies.length ||
+                          new Set(trades.map((t) => t.strategy)).size
+                        } different trading strategies:`}
+                  </span>
+
+                  {(selectedStrategies.includes("MACD Cross Strategy") ||
+                    trades.some(
+                      (t) => t.strategy === "MACD Cross Strategy"
+                    )) && (
+                    <span className="block mb-2">
+                      <span className="text-teal-400 font-medium">
+                        MACD Cross Strategy:
+                      </span>{" "}
+                      A trend-following approach that generates buy signals when
+                      the MACD line crosses above the signal line (bullish
+                      momentum) and sell signals when it crosses below (bearish
+                      momentum). This strategy works best in trending markets.
+                    </span>
+                  )}
+
+                  {(selectedStrategies.includes("RSI Reversal Strategy") ||
+                    trades.some(
+                      (t) => t.strategy === "RSI Reversal Strategy"
+                    )) && (
+                    <span className="block mb-2">
+                      <span className="text-amber-400 font-medium">
+                        RSI Reversal Strategy:
+                      </span>{" "}
+                      A mean-reversion approach that identifies potential market
+                      reversals by buying when RSI indicates oversold conditions
+                      (below 30) and selling when it indicates overbought
+                      conditions (above 70). This strategy works best in ranging
+                      markets.
+                    </span>
+                  )}
+
+                  {(selectedStrategies.includes("MACD Cross Strategy") ||
+                    trades.some((t) => t.strategy === "MACD Cross Strategy")) &&
+                    (selectedStrategies.includes("RSI Reversal Strategy") ||
+                      trades.some(
+                        (t) => t.strategy === "RSI Reversal Strategy"
+                      )) && (
+                      <span className="block mt-2 p-2 bg-black/40 rounded-md">
+                        <span className="text-indigo-400 font-medium">
+                          Strategy Combination:
+                        </span>{" "}
+                        By combining trend-following (MACD) with mean-reversion
+                        (RSI) techniques, this backtest attempts to capture
+                        profits in both trending and ranging market conditions.
+                        The MACD strategy helps identify longer-term momentum
+                        while the RSI strategy catches potential reversals at
+                        extreme levels.
+                      </span>
+                    )}
+
+                  {trades.length > 0 && (
+                    <span className="block mt-3 border-t border-white/10 pt-2">
+                      <span className="text-zinc-300">
+                        Performance Summary:
+                      </span>{" "}
+                      The backtest generated {trades.length} trade signals with
+                      a{" "}
+                      {(
+                        (trades.filter((t) => t.profitPercent > 0).length /
+                          trades.length) *
+                        100
+                      ).toFixed(1)}
+                      % win rate.{" "}
+                      {trades.filter((t) => t.direction === "long").length >
+                        0 &&
+                        `${
+                          trades.filter((t) => t.direction === "long").length
+                        } long trades and `}
+                      {trades.filter((t) => t.direction === "short").length >
+                        0 &&
+                        `${
+                          trades.filter((t) => t.direction === "short").length
+                        } short trades were executed.`}
+                    </span>
+                  )}
+                </>
+              ) : (
+                "Select strategies to see how they would approach trading this asset."
+              )}
+            </p>
+          </div>
+
+          {(selectedStrategies.includes("MACD Cross Strategy") ||
+            trades.some((t) => t.strategy === "MACD Cross Strategy")) && (
             <Card className="bg-black/30 border-teal-500/20 p-3 mb-3">
               <h4 className="text-sm font-medium text-teal-400 mb-2 flex items-center gap-2">
                 <TrendingUp className="h-3.5 w-3.5" />
@@ -557,7 +660,8 @@ export default function BacktestResults({
             </Card>
           )}
 
-          {selectedStrategies.includes("RSI Reversal Strategy") && (
+          {(selectedStrategies.includes("RSI Reversal Strategy") ||
+            trades.some((t) => t.strategy === "RSI Reversal Strategy")) && (
             <Card className="bg-black/30 border-amber-500/20 p-3">
               <h4 className="text-sm font-medium text-amber-400 mb-2 flex items-center gap-2">
                 <ArrowUpRight className="h-3.5 w-3.5" />
@@ -602,7 +706,7 @@ export default function BacktestResults({
             </Card>
           )}
 
-          {selectedStrategies.length === 0 && (
+          {selectedStrategies.length === 0 && trades.length === 0 && (
             <div className="text-center py-6 text-zinc-500 text-sm">
               Select strategies to see explanations
             </div>

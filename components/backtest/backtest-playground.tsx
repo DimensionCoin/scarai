@@ -16,12 +16,17 @@ import { useBacktestData } from "@/hooks/use-backtest-data";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useMobile } from "@/hooks/use-mobile";
+import { useUserContext } from "@/providers/UserProvider";
+import { useUser } from "@clerk/nextjs";
 
 export default function BacktestPlayground() {
   const [fullscreen, setFullscreen] = useState(false);
   const [activeTab, setActiveTab] = useState("chart");
   const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useMobile();
+  const { refreshUser } = useUserContext();
+  const { user } = useUser();
+  const userId = user?.id;
 
   const {
     selectedCoin,
@@ -126,13 +131,18 @@ export default function BacktestPlayground() {
 
         console.log("Direct API call with body:", JSON.stringify(requestBody));
 
-        const res = await fetch(`/api/backtest/run?t=${timestamp}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        });
+        const res = await fetch(
+          `/api/backtest/run?userId=${encodeURIComponent(
+            userId ?? ""
+          )}&t=${timestamp}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestBody),
+          }
+        );
 
         if (!res.ok) {
           throw new Error(`API Error (${res.status}): ${await res.text()}`);
@@ -140,8 +150,8 @@ export default function BacktestPlayground() {
 
         const data = await res.json();
         console.log("API response:", data);
-
-        // Now use the hook's runBacktest to update the UI
+        refreshUser();
+         // Now use the hook's runBacktest to update the UI
         return runBacktest(coinId, strategies, directionToUse);
       } catch (error) {
         console.error("Direct backtest error:", error);
