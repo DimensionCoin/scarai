@@ -903,6 +903,11 @@ export default function BacktestChart({
     let initialPinchDistance = 0;
 
     const handleTouchStart = (e: TouchEvent) => {
+      // Prevent default browser pinch-zoom behavior when there are multiple touches
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+
       if (chartLocked) return;
 
       // Check for double tap
@@ -925,12 +930,18 @@ export default function BacktestChart({
       } else if (e.touches.length === 2) {
         // Two touches - prepare for pinch zoom
         initialPinchDistance = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
         );
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
+      // Prevent default browser behavior for multi-touch gestures
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+
       if (chartLocked) return;
 
       if (e.touches.length === 1) {
@@ -973,7 +984,8 @@ export default function BacktestChart({
       } else if (e.touches.length === 2) {
         // Handle pinch zoom
         const currentPinchDistance = Math.hypot(
-          e.touches[0].clientX - e.touches[1].clientX
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
         );
 
         if (initialPinchDistance > 0) {
@@ -994,13 +1006,12 @@ export default function BacktestChart({
 
     const handleTouchEnd = () => {
       setIsPanning(false);
-      initialPinchDistance = 0;
     };
 
     // Add these event listeners to the canvas
     canvas.addEventListener("wheel", handleWheel, { passive: false });
-    canvas.addEventListener("touchstart", handleTouchStart);
-    canvas.addEventListener("touchmove", handleTouchMove);
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
     canvas.addEventListener("touchend", handleTouchEnd);
 
     canvas.addEventListener("mousedown", handleMouseDown);
@@ -1071,7 +1082,7 @@ export default function BacktestChart({
 
         <canvas
           ref={chartRef}
-          className={`w-full h-full touch-manipulation ${
+          className={`w-full h-full touch-none ${
             chartLocked
               ? "cursor-not-allowed"
               : "cursor-grab active:cursor-grabbing"
