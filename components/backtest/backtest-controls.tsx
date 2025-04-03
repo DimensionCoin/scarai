@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,6 +110,10 @@ type BacktestControlsProps = {
   playing?: boolean;
   setPlaying?: (playing: boolean) => void;
   hasBacktestData?: boolean;
+  setAmount: (amount: number) => void;
+  currentAmount: number;
+  currentLeverage?: number; // Add this prop
+  setLeverage?: (leverage: number) => void; // Add this prop
 };
 
 export default function BacktestControls({
@@ -116,6 +122,10 @@ export default function BacktestControls({
   playing = false,
   setPlaying = () => {},
   hasBacktestData = false,
+  setAmount,
+  currentAmount,
+  currentLeverage = 1, // Default to 1 if not provided
+  setLeverage = () => {}, // Default to no-op if not provided
 }: BacktestControlsProps) {
   const [showStrategyInfo, setShowStrategyInfo] = useState<string | null>(null);
   const infoPopupRef = useRef<HTMLDivElement>(null);
@@ -123,10 +133,13 @@ export default function BacktestControls({
   const [localDirection, setLocalDirection] = useState<
     "long" | "short" | "both"
   >("both");
+  // Keep a local state of the leverage to avoid timing issues
+  const [localLeverage, setLocalLeverage] = useState<number>(currentLeverage);
+  // Add a state to track if a coin has been selected
+  const [coinSelected, setCoinSelected] = useState<boolean>(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const {
-    amount,
-    setAmount,
     query,
     setQuery,
     coins,
@@ -139,8 +152,6 @@ export default function BacktestControls({
     setSelectedStrategies,
     tradeDirection,
     setTradeDirection,
-    leverage,
-    setLeverage,
     error,
     setError,
   } = useBacktestData();
@@ -149,6 +160,11 @@ export default function BacktestControls({
   useEffect(() => {
     setLocalDirection(tradeDirection);
   }, [tradeDirection]);
+
+  // Initialize local leverage from props
+  useEffect(() => {
+    setLocalLeverage(currentLeverage);
+  }, [currentLeverage]);
 
   // Ensure direction is preserved
   useEffect(() => {
@@ -180,6 +196,67 @@ export default function BacktestControls({
         // Pass the direction explicitly to runBacktest
         runBacktest(undefined, undefined, newDirection);
       }, 100);
+    }
+  };
+
+  // Function to handle leverage change
+  const handleLeverageChange = (newLeverage: number) => {
+    console.log(`Setting leverage from ${localLeverage} to ${newLeverage}x`);
+
+    // Update both local and global state
+    setLocalLeverage(newLeverage);
+    setLeverage(newLeverage);
+  };
+
+  // Helper function to get dynamic class names based on strategy selection
+  // const getStrategyClasses = (name: string, color: string) => {
+  //   if (selectedStrategies.includes(name)) {
+  //     return `bg-${color}-500/10 border-${color}-500/30`
+  //   }
+  //   return "bg-black/20 border-white/10 hover:border-white/20"
+  // }
+
+  // // Helper function to get dynamic text color based on strategy selection
+  // const getStrategyTextColor = (name: string, color: string) => {
+  //   if (selectedStrategies.includes(name)) {
+  //     return `text-${color}-400`
+  //   }
+  //   return "text-zinc-300"
+  // }
+
+  // Function to handle coin selection
+  const handleCoinSelection = (coin: { id: string; name: string }) => {
+    setSelectedCoin(coin.id);
+    setSelectedCoinName(coin.name);
+    setQuery(coin.name);
+    setCoins([]); // Hide dropdown immediately after selection
+    setCoinSelected(true); // Mark that a coin has been selected
+
+    // Blur the input to remove focus
+    if (inputRef.current) {
+      inputRef.current.blur();
+    }
+  };
+
+  // Function to handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newQuery = e.target.value;
+    setQuery(newQuery);
+
+    // If the user is clearing the input or typing something different than the selected coin,
+    // reset the selected coin and allow searching again
+    if (
+      newQuery.trim() === "" ||
+      (selectedCoinName && !newQuery.includes(selectedCoinName))
+    ) {
+      setSelectedCoin("");
+      setSelectedCoinName("");
+      setCoinSelected(false);
+    }
+
+    // Only fetch coins if we don't have a selection yet or if the user is explicitly changing their selection
+    if (!coinSelected && newQuery.trim() !== "") {
+      // The API call is handled in the useEffect in useBacktestData
     }
   };
 
@@ -216,8 +293,22 @@ export default function BacktestControls({
             <div className="relative">
               <Input
                 type="number"
-                value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
+                value={currentAmount}
+                onChange={(e) => {
+                  const newAmount = Number(e.target.value);
+                  if (!isNaN(newAmount) && newAmount > 0) {
+                    console.log(`Setting amount to: $${newAmount}`);
+                    setAmount(newAmount);
+                  }
+                }}
+                onBlur={(e) => {
+                  // Additional validation on blur
+                  const newAmount = Number(e.target.value);
+                  if (!isNaN(newAmount) && newAmount > 0) {
+                    console.log(`Confirmed amount: $${newAmount}`);
+                  }
+                }}
+                min="1"
                 className="bg-black/30 border-white/10 text-white pl-7 focus-visible:ring-teal-500 focus-visible:border-teal-500/50"
               />
               <DollarSign className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
@@ -231,15 +322,13 @@ export default function BacktestControls({
             </label>
             <div className="relative">
               <Input
+                ref={inputRef}
                 value={query}
-                onChange={(e) => {
-                  const newQuery = e.target.value;
-                  setQuery(newQuery);
-
-                  // Show dropdown only when typing
-                  if (newQuery.trim() !== "") {
-                    // Fetch coins as user types
-                    // The API call is handled in the useEffect in useBacktestData
+                onChange={handleInputChange}
+                onFocus={() => {
+                  // If a coin is already selected, don't show the dropdown
+                  if (coinSelected) {
+                    setCoins([]);
                   }
                 }}
                 onBlur={() => {
@@ -253,26 +342,20 @@ export default function BacktestControls({
               />
               <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
 
-              {coins.length > 0 && (
+              {coins.length > 0 && !coinSelected && (
                 <div className="absolute z-50 left-0 right-0 mt-1 border border-white/10 rounded-lg bg-black/90 backdrop-blur-xl shadow-xl max-h-40 overflow-auto">
                   {coins.map((coin) => (
                     <div
                       key={coin.id}
                       className="px-3 py-2 cursor-pointer hover:bg-white/5 transition-colors flex items-center gap-2"
-                      onClick={() => {
-                        setSelectedCoin(coin.id);
-                        setSelectedCoinName(coin.name);
-                        setQuery(coin.name);
-                        setCoins([]); // Hide dropdown immediately after selection
-                      }}
+                      onClick={() => handleCoinSelection(coin)}
                     >
                       {coin.image && (
                         <div className="h-5 w-5 rounded-full bg-zinc-800/50 flex items-center justify-center overflow-hidden">
                           <Image
                             src={
                               coin.image ||
-                              "/placeholder.svg?height=16&width=16" ||
-                              "/placeholder.svg"
+                              "/placeholder.svg?height=16&width=16"
                             }
                             alt={coin.name}
                             width={16}
@@ -296,13 +379,10 @@ export default function BacktestControls({
             )}
           </div>
 
-          {/* Trade Direction - HIGHLIGHTED SECTION */}
-          <div className="border-2 border-amber-500/50 rounded-lg p-3 bg-amber-500/5">
-            <label className="text-xs text-amber-400 font-bold mb-2 flex justify-between">
-              <span>TRADE DIRECTION</span>
-              <span className="text-[10px]">
-                ONLY selected trades will be generated
-              </span>
+          {/* Trade Direction */}
+          <div className="rounded-lg p-3 bg-black/20">
+            <label className="text-xs text-zinc-300 font-medium mb-2 block">
+              Trade Direction
             </label>
             <div className="grid grid-cols-3 gap-1">
               {["long", "short", "both"].map((opt) => (
@@ -334,42 +414,33 @@ export default function BacktestControls({
                 </button>
               ))}
             </div>
-            <div className="mt-2 p-2 bg-black/40 rounded border border-white/10">
-              <p className="text-[10px] text-zinc-300 font-bold flex items-center">
-                <AlertCircle className="h-3 w-3 text-amber-400 mr-1" />
-                Current Mode:
-                {localDirection === "long" ? (
-                  <span className="ml-1 text-teal-400">LONG ONLY</span>
-                ) : localDirection === "short" ? (
-                  <span className="ml-1 text-rose-400">SHORT ONLY</span>
-                ) : (
-                  <span className="ml-1 text-indigo-400">BOTH DIRECTIONS</span>
-                )}
-              </p>
-              <p className="text-[10px] text-zinc-400 mt-1">
-                {localDirection === "long"
-                  ? "Only long (buy) trades will be generated"
-                  : localDirection === "short"
-                  ? "Only short (sell) trades will be generated"
-                  : "Both long and short trades will be generated"}
-              </p>
-            </div>
           </div>
 
           {/* Leverage */}
-          <div>
-            <label className="text-xs text-zinc-400 mb-1 flex justify-between">
-              <span>Leverage</span>
-              <span className="text-teal-400">{leverage}x</span>
+          <div className="rounded-lg p-3 bg-black/20">
+            <label className="text-xs text-zinc-300 font-medium mb-2 block">
+              Leverage
             </label>
-            <Slider
-              value={[leverage]}
-              min={1}
-              max={25}
-              step={1}
-              onValueChange={(value) => setLeverage(value[0])}
-              className="py-1"
-            />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-400">1x</span>
+              <Slider
+                value={[localLeverage]}
+                min={1}
+                max={25}
+                step={1}
+                onValueChange={(value) => {
+                  console.log(`Setting leverage to: ${value[0]}x`);
+                  handleLeverageChange(value[0]);
+                }}
+                className="flex-1"
+              />
+              <span className="text-xs text-zinc-400">25x</span>
+            </div>
+            <div className="mt-2 text-center">
+              <span className="text-lg font-bold text-indigo-400">
+                {localLeverage}x
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -387,7 +458,9 @@ export default function BacktestControls({
               key={name}
               className={`relative rounded-lg border transition-colors cursor-pointer ${
                 selectedStrategies.includes(name)
-                  ? `bg-${color}-500/10 border-${color}-500/30`
+                  ? color === "teal"
+                    ? "bg-teal-500/10 border-teal-500/30"
+                    : "bg-amber-500/10 border-amber-500/30"
                   : "bg-black/20 border-white/10 hover:border-white/20"
               }`}
             >
@@ -406,7 +479,9 @@ export default function BacktestControls({
                     checked={selectedStrategies.includes(name)}
                     className={
                       selectedStrategies.includes(name)
-                        ? `text-${color}-500`
+                        ? color === "teal"
+                          ? "text-teal-500"
+                          : "text-amber-500"
                         : ""
                     }
                   />
@@ -414,11 +489,13 @@ export default function BacktestControls({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <span
-                          className={`${
+                          className={
                             selectedStrategies.includes(name)
-                              ? `text-${color}-400`
+                              ? color === "teal"
+                                ? "text-teal-400"
+                                : "text-amber-400"
                               : "text-zinc-300"
-                          }`}
+                          }
                         >
                           {icon}
                         </span>
@@ -450,11 +527,23 @@ export default function BacktestControls({
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
-                    className={`absolute z-40 top-full mt-1 left-0 right-0 bg-black/90 backdrop-blur-xl border border-${color}-500/20 rounded-lg p-3 shadow-xl`}
+                    className={`absolute z-40 top-full mt-1 left-0 right-0 bg-black/90 backdrop-blur-xl border ${
+                      color === "teal"
+                        ? "border-teal-500/20"
+                        : "border-amber-500/20"
+                    } rounded-lg p-3 shadow-xl`}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center gap-1.5">
-                        <span className={`text-${color}-400`}>{icon}</span>
+                        <span
+                          className={
+                            color === "teal"
+                              ? "text-teal-400"
+                              : "text-amber-400"
+                          }
+                        >
+                          {icon}
+                        </span>
                         <h3 className="font-medium text-zinc-200 text-xs">
                           {name}
                         </h3>
@@ -469,7 +558,11 @@ export default function BacktestControls({
                     <p className="text-xs text-zinc-400 mb-2">{description}</p>
                     <div className="flex justify-between items-center">
                       <span
-                        className={`text-xs px-1.5 py-0.5 rounded-full bg-${color}-500/10 text-${color}-400`}
+                        className={`text-xs px-1.5 py-0.5 rounded-full ${
+                          color === "teal"
+                            ? "bg-teal-500/10 text-teal-400"
+                            : "bg-amber-500/10 text-amber-400"
+                        }`}
                       >
                         {category}
                       </span>
@@ -480,7 +573,11 @@ export default function BacktestControls({
                           }
                           setShowStrategyInfo(null);
                         }}
-                        className={`text-xs flex items-center gap-1 text-${color}-400 hover:text-${color}-300 transition-colors`}
+                        className={`text-xs flex items-center gap-1 ${
+                          color === "teal"
+                            ? "text-teal-400 hover:text-teal-300"
+                            : "text-amber-400 hover:text-amber-300"
+                        } transition-colors`}
                       >
                         {selectedStrategies.includes(name)
                           ? "Already selected"
@@ -515,7 +612,7 @@ export default function BacktestControls({
                   // The API will throw an error if the coin doesn't exist
                 }
 
-                console.log("Running backtest with direction:", localDirection);
+               
                 // Pass the local direction explicitly to runBacktest
                 runBacktest(
                   selectedCoin || query.trim(),
@@ -580,11 +677,14 @@ export default function BacktestControls({
             // Don't reset direction - keep the user's preference
             // setTradeDirection("both")
             setLeverage(1);
+            setLocalLeverage(1);
             setQuery("");
             setCoins([]);
             setError(null);
+            setCoinSelected(false); // Reset coin selection state
 
-            // Force component refresh
+            // Force a complete reset of the application state
+            // This will reload the page, which is the most reliable way to reset everything
             window.location.reload();
           }}
           className="w-10 h-10 p-0 bg-black/30 border border-white/10 hover:bg-black/40 text-white"

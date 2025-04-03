@@ -1,42 +1,21 @@
-import { macdCrossStrategy } from "./strategies/macdCrossStrategy";
-import { rsiReversalStrategy } from "./strategies/rsiReversalStrategy";
+import type { BacktestResult } from "@/types/backtest";
+import { macdCrossStrategy } from "@/lib/backtest/strategies/macdCrossStrategy";
+import { rsiReversalStrategy } from "@/lib/backtest/strategies/rsiReversalStrategy";
 
-export type ExitReason =
-  | "MACD cross"
-  | "trend fade"
-  | "stop loss hit"
-  | "RSI target"
-  | "RSI exit"
-  | "time expiry";
-
-export type Trade = {
-  entryIndex: number;
-  exitIndex: number;
-  entryPrice: number;
-  exitPrice: number;
-  profitPercent: number;
-  direction: "long" | "short";
-  entryAction: "buy to open" | "sell to open";
-  exitAction: "sell to close" | "buy to close";
-  exitReason: ExitReason;
-};
-
-export type BacktestResult = {
-  trades: Trade[];
-  totalReturn: number;
-  winRate: number;
-  strategyName: string;
-};
-
+// Make sure the Strategy type uses the BacktestResult return type
 type Strategy = (
   prices: number[][],
   config: {
     direction: "long" | "short" | "both";
     leverage: number;
+    amount: number;
   }
 ) => BacktestResult;
 
-export function runBacktests(prices: number[][]): {
+export function runBacktests(
+  prices: number[][],
+  amount = 1000 // Add amount parameter with default
+): {
   bestStrategy: BacktestResult;
   summary: string;
   allResults: BacktestResult[];
@@ -47,7 +26,7 @@ export function runBacktests(prices: number[][]): {
   ];
 
   const results = strategies.map((strategy) =>
-    strategy(prices, { direction: "both", leverage: 1 })
+    strategy(prices, { direction: "both", leverage: 1, amount })
   );
 
   const sorted = [...results].sort((a, b) => b.totalReturn - a.totalReturn);

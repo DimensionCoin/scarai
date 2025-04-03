@@ -210,6 +210,36 @@ export default function BacktestResults({
                               {trade.exitAction}
                             </span>
                           </div>
+                          {trade.spotProfitPercent !== undefined && (
+                            <>
+                              <div>
+                                <span className="text-zinc-500">
+                                  Leveraged P/L:
+                                </span>{" "}
+                                <span
+                                  className={`${
+                                    trade.profitPercent >= 0
+                                      ? "text-teal-400"
+                                      : "text-rose-400"
+                                  }`}
+                                >
+                                  {trade.profitPercent.toFixed(2)}%
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-zinc-500">Spot P/L:</span>{" "}
+                                <span
+                                  className={`${
+                                    trade.spotProfitPercent >= 0
+                                      ? "text-teal-400"
+                                      : "text-rose-400"
+                                  }`}
+                                >
+                                  {trade.spotProfitPercent.toFixed(2)}%
+                                </span>
+                              </div>
+                            </>
+                          )}
                         </div>
                         <div className="mt-2 text-zinc-400 text-[10px] italic">
                           Click to collapse details
@@ -241,6 +271,59 @@ export default function BacktestResults({
                 Overall Performance
               </h3>
 
+              {/* Add a clear comparison between leveraged and spot results */}
+              <div className="mb-4 p-3 bg-black/30 rounded-lg border border-white/10">
+                <h4 className="text-xs font-medium text-zinc-300 mb-2">
+                  Profit Comparison
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-xs text-zinc-500 mb-1">
+                      With Leverage ({summary[0]?.leverageUsed || 1}x)
+                    </div>
+                    <div
+                      className={`text-lg font-medium ${
+                        totalProfit >= 0 ? "text-teal-400" : "text-rose-400"
+                      }`}
+                    >
+                      {formatCurrency((amount || 0) * (totalProfit / 100))}
+                    </div>
+                    <div className="text-xs text-zinc-400 mt-1">
+                      {totalProfit.toFixed(2)}% return
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-zinc-500 mb-1">
+                      Without Leverage (Spot)
+                    </div>
+                    <div
+                      className={`text-lg font-medium ${
+                        completedTrades.reduce(
+                          (sum, t) => sum + (t.spotProfitPercent || 0),
+                          0
+                        ) >= 0
+                          ? "text-teal-400"
+                          : "text-rose-400"
+                      }`}
+                    >
+                      {formatCurrency(
+                        completedTrades.reduce(
+                          (sum, t) => sum + (t.spotProfitAmount || 0),
+                          0
+                        )
+                      )}
+                    </div>
+                    <div className="text-xs text-zinc-400 mt-1">
+                      {completedTrades
+                        .reduce((sum, t) => sum + (t.spotProfitPercent || 0), 0)
+                        .toFixed(2)}
+                      % return
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-black/30 rounded-lg border border-white/10 p-2">
                   <div className="text-xs text-zinc-500 mb-1">Total Return</div>
@@ -268,16 +351,55 @@ export default function BacktestResults({
                 </div>
 
                 <div className="bg-black/30 rounded-lg border border-white/10 p-2">
-                  <div className="text-xs text-zinc-500 mb-1">Profit</div>
-                  <div
-                    className={`text-lg font-medium ${
-                      totalProfit >= 0 ? "text-teal-400" : "text-rose-400"
-                    }`}
-                  >
-                    {formatCurrency(amount * (totalProfit / 100))}
+                  <div className="text-xs text-zinc-500 mb-1">
+                    Leverage Used
+                  </div>
+                  <div className="text-lg font-medium text-indigo-400">
+                    {summary[0]?.leverageUsed || 1}x
                   </div>
                 </div>
               </div>
+
+              {/* Only show the leverage impact section if leverage > 1 */}
+              {summary.length > 0 &&
+                summary[0]?.leverageUsed &&
+                summary[0]?.leverageUsed > 1 && (
+                  <div className="mt-3 p-3 bg-indigo-500/10 border-2 border-indigo-500/30 rounded-lg">
+                    <h4 className="text-xs font-medium text-indigo-400 mb-2 flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4" />
+                      Leverage Impact
+                    </h4>
+
+                    {/* Add a difference calculation */}
+                    <div className="bg-black/40 rounded-lg border border-white/10 p-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-zinc-400">
+                          Difference due to leverage:
+                        </span>
+                        <span
+                          className={`text-sm font-medium ${
+                            (amount || 0) * (totalProfit / 100) -
+                              summary.reduce(
+                                (sum, s) => sum + Number(s.spotProfit || 0),
+                                0
+                              ) >=
+                            0
+                              ? "text-teal-400"
+                              : "text-rose-400"
+                          }`}
+                        >
+                          {formatCurrency(
+                            (amount || 0) * (totalProfit / 100) -
+                              summary.reduce(
+                                (sum, s) => sum + Number(s.spotProfit || 0),
+                                0
+                              )
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
             </div>
 
             {/* Strategy Breakdown */}
@@ -331,6 +453,38 @@ export default function BacktestResults({
                         </span>
                       </div>
                     </div>
+
+                    {/* Add spot trading comparison if leverage is used */}
+                    {s.leverageUsed &&
+                      s.leverageUsed > 1 &&
+                      s.spotProfit !== undefined && (
+                        <div className="mt-2 pt-2 border-t border-white/10 grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-zinc-500">Spot Return:</span>{" "}
+                            <span
+                              className={`${
+                                Number(s.spotReturn) >= 0
+                                  ? "text-teal-400"
+                                  : "text-rose-400"
+                              }`}
+                            >
+                              {Number(s.spotReturn).toFixed(2)}%
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-zinc-500">Spot Profit:</span>{" "}
+                            <span
+                              className={`${
+                                Number(s.spotProfit) >= 0
+                                  ? "text-teal-400"
+                                  : "text-rose-400"
+                              }`}
+                            >
+                              {formatCurrency(Number(s.spotProfit))}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                   </div>
                 ))}
               </div>

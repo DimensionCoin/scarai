@@ -15,19 +15,19 @@ import BacktestChart from "./backtest-chart";
 import { useBacktestData } from "@/hooks/use-backtest-data";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { useMobile } from "@/hooks/use-mobile"; 
+import { useMobile } from "@/hooks/use-mobile";
 
 export default function BacktestPlayground() {
   const [fullscreen, setFullscreen] = useState(false);
   const [activeTab, setActiveTab] = useState("chart");
   const containerRef = useRef<HTMLDivElement>(null);
-  const isMobile = useMobile(); 
-
+  const isMobile = useMobile();
 
   const {
     selectedCoin,
     selectedStrategies,
     amount,
+    setAmount,
     tradeDirection,
     prices,
     trades,
@@ -50,7 +50,20 @@ export default function BacktestPlayground() {
     jumpToStart,
     jumpToEnd,
     error,
+    leverage, // Make sure leverage is included here
+    setLeverage, // Add this to access the leverage setter
   } = useBacktestData();
+
+  // Keep a local reference to the current leverage value
+  const leverageRef = useRef(leverage);
+
+  // Update the ref whenever leverage changes
+  useEffect(() => {
+    leverageRef.current = leverage;
+    console.log(
+      `Leverage updated to: ${leverage}x (ref: ${leverageRef.current}x)`
+    );
+  }, [leverage]);
 
   // Handle fullscreen mode
   useEffect(() => {
@@ -90,14 +103,57 @@ export default function BacktestPlayground() {
     // Use the provided direction or fall back to the current direction
     const directionToUse = direction || tradeDirection;
 
-    // Run the backtest with the provided parameters
-    return runBacktest(coinId, strategies, directionToUse);
+    // Use the current leverage value from the ref
+    const currentLeverage = leverageRef.current;
+
+    // Log the current amount and leverage before running the backtest
+    console.log(`BacktestPlayground: Running backtest with amount: $${amount}`);
+    console.log(
+      `BacktestPlayground: Running backtest with leverage: ${currentLeverage}x`
+    );
+
+    // Create a direct API call instead of using the hook
+    const runDirectBacktest = async () => {
+      try {
+        const timestamp = Date.now();
+        const requestBody = {
+          coin: coinId || selectedCoin || "",
+          amount: amount,
+          strategies: strategies || selectedStrategies,
+          direction: directionToUse,
+          leverage: currentLeverage, // Use the current leverage from the ref
+        };
+
+        console.log("Direct API call with body:", JSON.stringify(requestBody));
+
+        const res = await fetch(`/api/backtest/run?t=${timestamp}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!res.ok) {
+          throw new Error(`API Error (${res.status}): ${await res.text()}`);
+        }
+
+        const data = await res.json();
+        console.log("API response:", data);
+
+        // Now use the hook's runBacktest to update the UI
+        return runBacktest(coinId, strategies, directionToUse);
+      } catch (error) {
+        console.error("Direct backtest error:", error);
+        throw error;
+      }
+    };
+
+    return runDirectBacktest();
   };
 
   // Check if backtest data is loaded
   const hasBacktestData = prices.length > 0;
-
-  
 
   return (
     <div
@@ -166,6 +222,10 @@ export default function BacktestPlayground() {
               playing={playing}
               setPlaying={setPlaying}
               hasBacktestData={hasBacktestData}
+              setAmount={setAmount}
+              currentAmount={amount}
+              currentLeverage={leverage}
+              setLeverage={setLeverage}
             />
           </div>
 

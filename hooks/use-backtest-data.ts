@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Trade, Summary } from "@/types/backtest";
 import { useUserContext } from "@/providers/UserProvider";
-import { useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
+
 
 export function useBacktestData() {
   const [amount, setAmount] = useState(1000);
+  const amountRef = useRef(1000); // Add a ref to track the current amount
   const [query, setQuery] = useState("");
   const [coins, setCoins] = useState<
     { id: string; name: string; symbol?: string; image?: string }[]
@@ -19,6 +21,7 @@ export function useBacktestData() {
     "long" | "short" | "both"
   >("both");
   const [leverage, setLeverage] = useState(1);
+  const leverageRef = useRef(1); // Add a ref to track the current leverage
   const [summary, setSummary] = useState<Summary[]>([]);
   const [prices, setPrices] = useState<number[][]>([]);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -32,10 +35,19 @@ export function useBacktestData() {
   const pathname = usePathname();
   const { refreshUser } = useUserContext();
   const { user } = useUser();
-  // Log direction changes
+  const userId = user?.id;
+
+  // Update the ref whenever amount changes
   useEffect(() => {
-    console.log("Trade direction changed to:", tradeDirection);
-  }, [tradeDirection]);
+    console.log("Amount changed to:", amount);
+    amountRef.current = amount;
+  }, [amount]);
+
+  // Update the ref whenever leverage changes
+  useEffect(() => {
+    console.log("Leverage changed to:", leverage);
+    leverageRef.current = leverage;
+  }, [leverage]);
 
   // Calculate active trades - with safety checks
   const activeTrades = trades.filter(
@@ -79,7 +91,6 @@ export function useBacktestData() {
       }
     }, 300);
     return () => clearTimeout(delay);
-     
   }, [query]);
 
   useEffect(() => {
@@ -108,6 +119,22 @@ export function useBacktestData() {
     return () => clearInterval(interval);
   }, [playing, prices, trades, completedTrades, playbackSpeed]);
 
+  // Custom setAmount function that updates both state and ref
+  const setAmountWithRef = (newAmount: number) => {
+    console.log(`Setting amount to: $${newAmount} (previous: $${amount})`);
+    setAmount(newAmount);
+    amountRef.current = newAmount;
+  };
+
+  // Custom setLeverage function that updates both state and ref
+  const setLeverageWithRef = (newLeverage: number) => {
+    console.log(
+      `Setting leverage to: ${newLeverage}x (previous: ${leverage}x)`
+    );
+    setLeverage(newLeverage);
+    leverageRef.current = newLeverage;
+  };
+
   const runBacktest = async (
     coinId?: string,
     strategies?: string[],
@@ -116,13 +143,16 @@ export function useBacktestData() {
     const coinToUse = coinId || selectedCoin || query.trim();
     const strategiesToUse = strategies || selectedStrategies;
     const directionToUse = direction || tradeDirection;
+    // Use the ref values to ensure we have the latest values
+    const currentAmount = amountRef.current;
+    const currentLeverage = leverageRef.current;
 
     if (!coinToUse || strategiesToUse.length === 0 || isRequestPending) {
       setError("Please enter a coin and select at least one strategy.");
       return;
     }
 
-    if (!user?.id) {
+    if (!userId) {
       setError("User not authenticated.");
       return;
     }
@@ -139,18 +169,23 @@ export function useBacktestData() {
 
     try {
       const timestamp = Date.now();
+
+      // Log the current values being sent to the API
+      console.log(`Sending request with amount: $${currentAmount}`);
+      console.log(`Sending request with leverage: ${currentLeverage}x`);
+
       const requestBody = {
         coin: coinToUse,
-        amount,
+        amount: currentAmount,
         strategies: strategiesToUse,
         direction: directionToUse,
-        leverage,
+        leverage: currentLeverage,
       };
 
+      console.log("Request body:", JSON.stringify(requestBody));
+
       const res = await fetch(
-        `/api/backtest/run?userId=${encodeURIComponent(
-          user.id
-        )}&t=${timestamp}`,
+        `/api/backtest/run?userId=${encodeURIComponent(userId)}&t=${timestamp}`,
         {
           method: "POST",
           headers: {
@@ -172,6 +207,23 @@ export function useBacktestData() {
         return;
       }
 
+      // Log the values received back from the API
+      console.log(`API returned amount: $${data.amount}`);
+      console.log(`API returned leverage: ${data.leverage}x`);
+
+      // Ensure we don't reset the values
+      if (data.amount && data.amount !== currentAmount) {
+        console.log(
+          `API returned different amount (${data.amount}) than sent (${currentAmount}), keeping original`
+        );
+      }
+
+      if (data.leverage && data.leverage !== currentLeverage) {
+        console.log(
+          `API returned different leverage (${data.leverage}) than sent (${currentLeverage}), keeping original`
+        );
+      }
+
       setSummary(data.summary || []);
       setPrices(data.prices || []);
       setTrades(data.trades || []);
@@ -190,7 +242,6 @@ export function useBacktestData() {
       setIsRequestPending(false);
     }
   };
-
 
   const jumpToStart = () => {
     setPlayIndex(0);
@@ -218,7 +269,7 @@ export function useBacktestData() {
   return {
     // State
     amount,
-    setAmount,
+    setAmount: setAmountWithRef, // Use our custom function
     query,
     setQuery,
     coins,
@@ -232,7 +283,7 @@ export function useBacktestData() {
     tradeDirection,
     setTradeDirection,
     leverage,
-    setLeverage,
+    setLeverage: setLeverageWithRef, // Use our custom function
     summary,
     prices,
     trades,
