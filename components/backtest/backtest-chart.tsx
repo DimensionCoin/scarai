@@ -9,7 +9,6 @@ import {
   X,
   ZoomIn,
   ZoomOut,
-  Maximize,
   ChevronDown,
   ChevronUp,
   Crosshair,
@@ -76,10 +75,51 @@ export default function BacktestChart({
     date: string;
     trade?: Trade;
   }>({ visible: false, x: 0, y: 0, price: 0, date: "" });
-  const [chartMode, setChartMode] = useState<"line" | "candle">("line");
-  const [showCrosshair, setShowCrosshair] = useState(false);
+  // Remove the unused chartMode state variable
+  const [showCrosshair, setShowCrosshair] = useState(true);
   const [crosshairPosition, setCrosshairPosition] = useState({ x: 0, y: 0 });
   const [chartLocked, setChartLocked] = useState(true);
+
+  // Handle zoom in/out
+  const handleZoomIn = useCallback(() => {
+    if (chartLocked) return;
+    setZoomLevel((prev) => Math.min(prev * 1.5, 5));
+
+    // Adjust view range to zoom around current center
+    setViewRange((prev) => {
+      const center = (prev.start + prev.end) / 2;
+      const newRange = (prev.end - prev.start) / 1.5;
+      const newStart = Math.max(0, Math.floor(center - newRange / 2));
+      const newEnd = Math.min(
+        prices.length - 1,
+        Math.ceil(center + newRange / 2)
+      );
+      return { start: newStart, end: newEnd };
+    });
+  }, [chartLocked, prices.length]);
+
+  const handleZoomOut = useCallback(() => {
+    if (chartLocked) return;
+    setZoomLevel((prev) => Math.max(prev / 1.5, 0.5));
+
+    // Adjust view range to zoom around current center
+    setViewRange((prev) => {
+      const center = (prev.start + prev.end) / 2;
+      const newRange = Math.min((prev.end - prev.start) * 1.5, prices.length);
+      const newStart = Math.max(0, Math.floor(center - newRange / 2));
+      const newEnd = Math.min(
+        prices.length - 1,
+        Math.ceil(center + newRange / 2)
+      );
+      return { start: newStart, end: newEnd };
+    });
+  }, [chartLocked, prices.length]);
+
+  const handleResetZoom = useCallback(() => {
+    if (chartLocked) return;
+    setZoomLevel(1);
+    setViewRange({ start: 0, end: prices.length - 1 });
+  }, [chartLocked, prices.length]);
 
   // Check if simulation is complete when playIndex changes
   useEffect(() => {
@@ -656,7 +696,7 @@ export default function BacktestChart({
     }
 
     // Draw crosshair if enabled
-    if (showCrosshair && !playing) {
+    if (showCrosshair) {
       const { x, y } = crosshairPosition;
 
       // Only draw if within chart area
@@ -702,12 +742,9 @@ export default function BacktestChart({
     completedTrades,
     viewRange,
     showAllTrades,
-    activeTrades.length,
     zoomLevel,
     showCrosshair,
     crosshairPosition,
-    chartMode,
-    playing,
   ]);
 
   // Effect for drawing the chart
@@ -728,6 +765,23 @@ export default function BacktestChart({
   useEffect(() => {
     const canvas = chartRef.current;
     if (!canvas) return;
+
+    // Add double tap detection
+    let lastTapTime = 0;
+    const handleDoubleTap = (e: TouchEvent) => {
+      const currentTime = new Date().getTime();
+      const tapLength = currentTime - lastTapTime;
+
+      if (tapLength < 300 && tapLength > 0) {
+        // Double tap detected
+        e.preventDefault();
+        if (!chartLocked) {
+          handleResetZoom();
+        }
+      }
+
+      lastTapTime = currentTime;
+    };
 
     const handleMouseDown = (e: MouseEvent) => {
       if (chartLocked) return;
@@ -830,6 +884,125 @@ export default function BacktestChart({
       }
     };
 
+    // Add wheel event for zooming with mouse scroll
+    const handleWheel = (e: WheelEvent) => {
+      if (chartLocked) return;
+      e.preventDefault();
+
+      // Zoom in or out based on wheel direction
+      if (e.deltaY < 0) {
+        handleZoomIn();
+      } else {
+        handleZoomOut();
+      }
+    };
+
+    // Add touch events for mobile
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let initialPinchDistance = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (chartLocked) return;
+
+      // Check for double tap
+      handleDoubleTap(e);
+
+      if (e.touches.length === 1) {
+        // Single touch - prepare for pan and update crosshair
+        const rect = canvas.getBoundingClientRect();
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+
+        // Update crosshair position
+        setCrosshairPosition({
+          x: touchStartX - rect.left,
+          y: touchStartY - rect.top,
+        });
+
+        setIsPanning(true);
+        setPanStart(touchStartX);
+      } else if (e.touches.length === 2) {
+        // Two touches - prepare for pinch zoom
+        initialPinchDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX
+        );
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (chartLocked) return;
+
+      if (e.touches.length === 1) {
+        // Update crosshair position to follow finger
+        const rect = canvas.getBoundingClientRect();
+        const touchX = e.touches[0].clientX - rect.left;
+        const touchY = e.touches[0].clientY - rect.top;
+
+        // Update crosshair position
+        setCrosshairPosition({ x: touchX, y: touchY });
+
+        if (isPanning) {
+          // Handle panning
+          const touchX = e.touches[0].clientX;
+          const dx = touchX - panStart;
+
+          const canvasWidth = canvas.width - 60;
+          const visibleCount = viewRange.end - viewRange.start || 100;
+          const moveAmount = Math.round((dx / canvasWidth) * visibleCount) * -1;
+
+          if (moveAmount !== 0) {
+            setViewRange((prev) => {
+              if (prev.start === 0 && prev.end === 0) {
+                const visibleCount = Math.min(100, prices.length);
+                const start = Math.max(0, playIndex - visibleCount + 1);
+                const end = playIndex;
+                prev = { start, end };
+              }
+
+              const newStart = Math.max(0, prev.start + moveAmount);
+              const newEnd = Math.min(prices.length - 1, prev.end + moveAmount);
+
+              if (newStart === prev.start && newEnd === prev.end) return prev;
+
+              setPanStart(touchX);
+              return { start: newStart, end: newEnd };
+            });
+          }
+        }
+      } else if (e.touches.length === 2) {
+        // Handle pinch zoom
+        const currentPinchDistance = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX
+        );
+
+        if (initialPinchDistance > 0) {
+          const pinchRatio = currentPinchDistance / initialPinchDistance;
+
+          if (pinchRatio > 1.05) {
+            // Zoom in
+            handleZoomIn();
+            initialPinchDistance = currentPinchDistance;
+          } else if (pinchRatio < 0.95) {
+            // Zoom out
+            handleZoomOut();
+            initialPinchDistance = currentPinchDistance;
+          }
+        }
+      }
+    };
+
+    const handleTouchEnd = () => {
+      setIsPanning(false);
+      initialPinchDistance = 0;
+    };
+
+    // Add these event listeners to the canvas
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+    canvas.addEventListener("touchstart", handleTouchStart);
+    canvas.addEventListener("touchmove", handleTouchMove);
+    canvas.addEventListener("touchend", handleTouchEnd);
+
     canvas.addEventListener("mousedown", handleMouseDown);
     canvas.addEventListener("mouseup", handleMouseUp);
     canvas.addEventListener("mouseleave", handleMouseLeave);
@@ -840,6 +1013,10 @@ export default function BacktestChart({
       canvas.removeEventListener("mouseup", handleMouseUp);
       canvas.removeEventListener("mouseleave", handleMouseLeave);
       canvas.removeEventListener("mousemove", handleMouseMove);
+      canvas.removeEventListener("wheel", handleWheel);
+      canvas.removeEventListener("touchstart", handleTouchStart);
+      canvas.removeEventListener("touchmove", handleTouchMove);
+      canvas.removeEventListener("touchend", handleTouchEnd);
     };
   }, [
     isPanning,
@@ -852,6 +1029,11 @@ export default function BacktestChart({
     playing,
     simulationComplete,
     hoverInfo,
+    completedTrades,
+    handleResetZoom,
+    handleZoomIn,
+    handleZoomOut,
+    prices,
   ]);
 
   // Effect for initializing viewRange
@@ -879,47 +1061,6 @@ export default function BacktestChart({
     prices && prices.length > 0 ? prices.length - 1 : 0
   );
 
-  // Handle zoom in/out
-  const handleZoomIn = () => {
-    if (chartLocked) return;
-    setZoomLevel((prev) => Math.min(prev * 1.5, 5));
-
-    // Adjust view range to zoom around current center
-    setViewRange((prev) => {
-      const center = (prev.start + prev.end) / 2;
-      const newRange = (prev.end - prev.start) / 1.5;
-      const newStart = Math.max(0, Math.floor(center - newRange / 2));
-      const newEnd = Math.min(
-        prices.length - 1,
-        Math.ceil(center + newRange / 2)
-      );
-      return { start: newStart, end: newEnd };
-    });
-  };
-
-  const handleZoomOut = () => {
-    if (chartLocked) return;
-    setZoomLevel((prev) => Math.max(prev / 1.5, 0.5));
-
-    // Adjust view range to zoom around current center
-    setViewRange((prev) => {
-      const center = (prev.start + prev.end) / 2;
-      const newRange = Math.min((prev.end - prev.start) * 1.5, prices.length);
-      const newStart = Math.max(0, Math.floor(center - newRange / 2));
-      const newEnd = Math.min(
-        prices.length - 1,
-        Math.ceil(center + newRange / 2)
-      );
-      return { start: newStart, end: newEnd };
-    });
-  };
-
-  const handleResetZoom = () => {
-    if (chartLocked) return;
-    setZoomLevel(1);
-    setViewRange({ start: 0, end: prices.length - 1 });
-  };
-
   return (
     <>
       {/* Chart View */}
@@ -930,14 +1071,14 @@ export default function BacktestChart({
 
         <canvas
           ref={chartRef}
-          className={`w-full h-full ${
+          className={`w-full h-full touch-manipulation ${
             chartLocked
               ? "cursor-not-allowed"
               : "cursor-grab active:cursor-grabbing"
           }`}
         />
 
-        {/* Chart Controls - Only visible after simulation */}
+        {/* Mobile-friendly Chart Controls - Only visible after simulation */}
         <AnimatePresence>
           {simulationComplete && (
             <motion.div
@@ -945,9 +1086,9 @@ export default function BacktestChart({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.3 }}
-              className="absolute top-2 left-2 right-2 flex justify-between items-center"
+              className="absolute top-2 left-2 right-2 flex justify-between items-center z-20"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 md:gap-2">
                 <button
                   onClick={() => setChartLocked(!chartLocked)}
                   className={`p-1.5 rounded-full ${
@@ -958,9 +1099,9 @@ export default function BacktestChart({
                   title={chartLocked ? "Unlock chart" : "Lock chart"}
                 >
                   {chartLocked ? (
-                    <Lock className="h-3.5 w-3.5" />
+                    <Lock className="h-3 w-3 md:h-3.5 md:w-3.5" />
                   ) : (
-                    <Unlock className="h-3.5 w-3.5" />
+                    <Unlock className="h-3 w-3 md:h-3.5 md:w-3.5" />
                   )}
                 </button>
 
@@ -973,58 +1114,19 @@ export default function BacktestChart({
                   } backdrop-blur-md border border-white/10 hover:bg-black/40 transition-colors`}
                   title="Toggle crosshair"
                 >
-                  <Crosshair className="h-3.5 w-3.5" />
-                </button>
-
-                <button
-                  onClick={handleZoomIn}
-                  className={`p-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 hover:bg-black/60 transition-colors ${
-                    chartLocked
-                      ? "opacity-50 cursor-not-allowed"
-                      : "text-zinc-300"
-                  }`}
-                  title="Zoom in"
-                  disabled={chartLocked}
-                >
-                  <ZoomIn className="h-3.5 w-3.5" />
-                </button>
-
-                <button
-                  onClick={handleZoomOut}
-                  className={`p-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 hover:bg-black/60 transition-colors ${
-                    chartLocked
-                      ? "opacity-50 cursor-not-allowed"
-                      : "text-zinc-300"
-                  }`}
-                  title="Zoom out"
-                  disabled={chartLocked}
-                >
-                  <ZoomOut className="h-3.5 w-3.5" />
-                </button>
-
-                <button
-                  onClick={handleResetZoom}
-                  className={`p-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 hover:bg-black/60 transition-colors ${
-                    chartLocked
-                      ? "opacity-50 cursor-not-allowed"
-                      : "text-zinc-300"
-                  }`}
-                  title="Reset view"
-                  disabled={chartLocked}
-                >
-                  <Maximize className="h-3.5 w-3.5" />
+                  <Crosshair className="h-3 w-3 md:h-3.5 md:w-3.5" />
                 </button>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 md:gap-2">
                 <button
                   onClick={() => setShowControls(!showControls)}
                   className="p-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 hover:bg-black/60 transition-colors text-zinc-300"
                 >
                   {showControls ? (
-                    <ChevronUp className="h-3.5 w-3.5" />
+                    <ChevronUp className="h-3 w-3 md:h-3.5 md:w-3.5" />
                   ) : (
-                    <ChevronDown className="h-3.5 w-3.5" />
+                    <ChevronDown className="h-3 w-3 md:h-3.5 md:w-3.5" />
                   )}
                 </button>
               </div>
@@ -1032,7 +1134,7 @@ export default function BacktestChart({
           )}
         </AnimatePresence>
 
-        {/* Advanced Controls Panel */}
+        {/* Mobile-friendly Advanced Controls Panel */}
         <AnimatePresence>
           {showControls && simulationComplete && (
             <motion.div
@@ -1040,7 +1142,7 @@ export default function BacktestChart({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
-              className="absolute top-12 left-2 right-2 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 p-3 text-xs"
+              className="absolute top-12 left-2 right-2 bg-black/60 backdrop-blur-md rounded-lg border border-white/10 p-2 md:p-3 text-xs z-20"
             >
               <div className="flex items-center justify-between mb-2">
                 <h4 className="font-medium text-white">Chart Controls</h4>
@@ -1048,69 +1150,19 @@ export default function BacktestChart({
                   onClick={() => setShowControls(false)}
                   className="text-zinc-400 hover:text-white transition-colors"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <X className="h-3 w-3 md:h-3.5 md:w-3.5" />
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="bg-black/30 rounded-lg p-2 border border-white/10">
-                  <div className="text-zinc-400 mb-1">Chart Type</div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => setChartMode("line")}
-                      className={`px-2 py-1 rounded text-xs ${
-                        chartMode === "line"
-                          ? "bg-indigo-500/20 text-indigo-400"
-                          : "bg-black/30 text-zinc-400"
-                      }`}
-                    >
-                      Line
-                    </button>
-                    <button
-                      onClick={() => setChartMode("candle")}
-                      className={`px-2 py-1 rounded text-xs ${
-                        chartMode === "candle"
-                          ? "bg-indigo-500/20 text-indigo-400"
-                          : "bg-black/30 text-zinc-400"
-                      }`}
-                    >
-                      Candle
-                    </button>
-                  </div>
-                </div>
-
-                <div className="bg-black/30 rounded-lg p-2 border border-white/10">
-                  <div className="text-zinc-400 mb-1">Time Period</div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => setShowAllTrades(false)}
-                      className={`px-2 py-1 rounded text-xs ${
-                        !showAllTrades
-                          ? "bg-indigo-500/20 text-indigo-400"
-                          : "bg-black/30 text-zinc-400"
-                      }`}
-                    >
-                      Default
-                    </button>
-                    <button
-                      onClick={() => setShowAllTrades(true)}
-                      className={`px-2 py-1 rounded text-xs ${
-                        showAllTrades
-                          ? "bg-indigo-500/20 text-indigo-400"
-                          : "bg-black/30 text-zinc-400"
-                      }`}
-                    >
-                      All Data
-                    </button>
-                  </div>
-                </div>
-
-                <div className="bg-black/30 rounded-lg p-2 border border-white/10">
-                  <div className="text-zinc-400 mb-1">Zoom Level</div>
+                  <div className="text-zinc-400 mb-1">Zoom</div>
                   <div className="flex items-center justify-between">
                     <button
                       onClick={handleZoomOut}
-                      className="p-1 rounded bg-black/30 text-zinc-400"
+                      className={`p-1.5 rounded-full bg-black/30 text-zinc-400 ${
+                        chartLocked ? "opacity-50" : ""
+                      }`}
                       disabled={chartLocked}
                     >
                       <ZoomOut className="h-3 w-3" />
@@ -1120,36 +1172,47 @@ export default function BacktestChart({
                     </span>
                     <button
                       onClick={handleZoomIn}
-                      className="p-1 rounded bg-black/30 text-zinc-400"
+                      className={`p-1.5 rounded-full bg-black/30 text-zinc-400 ${
+                        chartLocked ? "opacity-50" : ""
+                      }`}
                       disabled={chartLocked}
                     >
                       <ZoomIn className="h-3 w-3" />
                     </button>
                   </div>
+                  <div className="text-[10px] text-zinc-500 mt-1 text-center">
+                    Pinch or scroll to zoom
+                  </div>
                 </div>
 
                 <div className="bg-black/30 rounded-lg p-2 border border-white/10">
-                  <div className="text-zinc-400 mb-1">Chart Tools</div>
+                  <div className="text-zinc-400 mb-1">View</div>
                   <div className="flex gap-1">
                     <button
-                      onClick={() => setShowCrosshair(!showCrosshair)}
-                      className={`px-2 py-1 rounded text-xs flex items-center gap-1 ${
-                        showCrosshair
+                      onClick={() => setShowAllTrades(!showAllTrades)}
+                      className={`px-2 py-1 rounded text-xs flex-1 ${
+                        showAllTrades
                           ? "bg-indigo-500/20 text-indigo-400"
                           : "bg-black/30 text-zinc-400"
                       }`}
                     >
-                      <Crosshair className="h-3 w-3" /> Crosshair
+                      {showAllTrades ? "Full" : "Default"}
                     </button>
                     <button
                       onClick={handleResetZoom}
-                      className="px-2 py-1 rounded text-xs flex items-center gap-1 bg-black/30 text-zinc-400"
+                      className={`px-2 py-1 rounded text-xs flex-1 bg-black/30 text-zinc-400 ${
+                        chartLocked ? "opacity-50" : ""
+                      }`}
                       disabled={chartLocked}
                     >
-                      <RefreshCw className="h-3 w-3" /> Reset
+                      <RefreshCw className="h-3 w-3 inline mr-1" /> Reset
                     </button>
                   </div>
                 </div>
+              </div>
+
+              <div className="text-[10px] text-zinc-400 mt-2 text-center">
+                Swipe to pan • Double tap to reset view
               </div>
             </motion.div>
           )}
@@ -1307,9 +1370,9 @@ export default function BacktestChart({
         )}
       </div>
 
-      {/* Playback Controls - ensure visibility on all devices */}
-      <div className="bg-black/40 border-t border-white/10 p-3 sticky bottom-0 z-10">
-        <div className="flex items-center gap-3 mb-2">
+      {/* Mobile-friendly Playback Controls */}
+      <div className="bg-black/40 border-t border-white/10 p-2 md:p-3 sticky bottom-0 z-10">
+        <div className="flex items-center gap-2 mb-2">
           <button
             onClick={jumpToStart}
             className="p-1.5 rounded-full bg-black/50 hover:bg-black/70 text-zinc-300 hover:text-white transition-colors"
@@ -1338,7 +1401,7 @@ export default function BacktestChart({
             <ChevronsRight className="h-4 w-4" />
           </button>
 
-          <div className="flex-1 px-2">
+          <div className="flex-1 px-1 md:px-2">
             <input
               type="range"
               min={0}
@@ -1352,19 +1415,7 @@ export default function BacktestChart({
             />
           </div>
 
-          <button
-            onClick={() => setShowAllTrades(!showAllTrades)}
-            className={`px-3 py-1.5 text-xs rounded-full transition-colors ${
-              showAllTrades
-                ? "bg-indigo-500/30 text-indigo-300 border border-indigo-500/50"
-                : "bg-black/50 text-zinc-300 border border-white/20 hover:bg-black/70 hover:border-white/30"
-            }`}
-            title={showAllTrades ? "Show Current View" : "Show All Trades"}
-          >
-            {showAllTrades ? "Full View" : "Show All"}
-          </button>
-
-          <div className="flex items-center gap-1 bg-black/50 rounded-full px-3 py-1.5">
+          <div className="flex items-center gap-1 bg-black/50 rounded-full px-2 py-1.5">
             <span className="text-xs text-zinc-400 hidden sm:inline">
               Speed:
             </span>
@@ -1384,42 +1435,46 @@ export default function BacktestChart({
           </div>
         </div>
 
-        {/* Active Trades */}
-        <div className="flex flex-wrap gap-2 mt-2">
+        {/* Active Trades - More compact for mobile */}
+        <div className="flex flex-wrap gap-1 md:gap-2 mt-2">
           {activeTrades.length > 0
             ? activeTrades.map((trade, i) => (
                 <div
                   key={i}
-                  className={`bg-black/50 backdrop-blur-sm rounded-full px-3 py-1.5 text-xs border ${
+                  className={`bg-black/50 backdrop-blur-sm rounded-full px-2 py-1 text-xs border ${
                     trade.direction === "long"
                       ? "border-teal-500/30 text-teal-400"
                       : "border-rose-500/30 text-rose-400"
-                  } flex items-center gap-2`}
+                  } flex items-center gap-1 md:gap-2`}
                 >
-                  <span className="h-2 w-2 rounded-full bg-amber-400"></span>
-                  <span className="font-medium">
+                  <span className="h-1.5 w-1.5 md:h-2 md:w-2 rounded-full bg-amber-400"></span>
+                  <span className="font-medium text-[10px] md:text-xs">
                     {trade.strategy.split(" ")[0]}
                   </span>
-                  <span className="text-zinc-500">|</span>
-                  <span>{trade.direction.toUpperCase()}</span>
-                  <span className="text-zinc-500">|</span>
-                  <span>${trade.entryPrice.toFixed(2)}</span>
+                  <span className="text-zinc-500 hidden md:inline">|</span>
+                  <span className="text-[10px] md:text-xs">
+                    {trade.direction.toUpperCase()}
+                  </span>
+                  <span className="text-zinc-500 hidden md:inline">|</span>
+                  <span className="text-[10px] md:text-xs">
+                    ${trade.entryPrice.toFixed(2)}
+                  </span>
                 </div>
               ))
             : prices.length > 0 &&
               !playing && (
-                <div className="text-xs text-zinc-500 py-1">
-                  No active trades at this point in time
+                <div className="text-[10px] md:text-xs text-zinc-500 py-1">
+                  No active trades
                 </div>
               )}
         </div>
 
-        {/* Chart instructions - add null check for completedTrades */}
+        {/* Chart instructions - more concise for mobile */}
         {!playing && completedTrades && completedTrades.length > 0 && (
-          <div className="mt-2 text-xs text-zinc-500 text-center">
+          <div className="mt-2 text-[10px] md:text-xs text-zinc-500 text-center">
             {simulationComplete
-              ? "Simulation complete - Chart unlocked for interaction"
-              : "Drag to pan the chart • Click &quot;Show All Trades&quot; to view the entire backtest"}
+              ? "Simulation complete - Swipe to pan, pinch to zoom"
+              : "Tap play to continue simulation"}
           </div>
         )}
       </div>
