@@ -29,9 +29,10 @@ import { useBacktestData } from "@/hooks/use-backtest-data";
 import type { StrategyInfo } from "@/types/backtest";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-// Import the strategy names directly
+// Import the breakout strategy name
 const macdCrossStrategyName = "MACD Cross Strategy";
 const rsiReversalStrategyName = "RSI Reversal Strategy";
+const breakoutStrategyName = "Breakout Strategy";
 
 const STRATEGIES: StrategyInfo[] = [
   {
@@ -95,6 +96,33 @@ const STRATEGIES: StrategyInfo[] = [
         name: "Stop Loss",
         description: "Percentage-based stop loss",
         defaultValue: "5%",
+      },
+    ],
+  },
+  {
+    name: breakoutStrategyName,
+    description:
+      "Identifies price breakouts from recent ranges with MACD momentum confirmation",
+    icon: <TrendingUp className="h-4 w-4" />,
+    category: "Momentum",
+    color: "indigo",
+    details:
+      "The Breakout Strategy identifies when price breaks out of its recent trading range, entering long positions when price breaks above resistance with positive MACD momentum, and short positions when price breaks below support with negative MACD momentum.",
+    parameters: [
+      {
+        name: "Lookback Period",
+        description: "Period for calculating recent highs and lows",
+        defaultValue: 20,
+      },
+      {
+        name: "Breakout Threshold",
+        description: "Percentage threshold for confirming breakouts",
+        defaultValue: "0.2%",
+      },
+      {
+        name: "Stop Loss",
+        description: "Percentage-based stop loss",
+        defaultValue: "10%",
       },
     ],
   },
@@ -460,7 +488,9 @@ export default function BacktestControls({
                 selectedStrategies.includes(name)
                   ? color === "teal"
                     ? "bg-teal-500/10 border-teal-500/30"
-                    : "bg-amber-500/10 border-amber-500/30"
+                    : color === "amber"
+                    ? "bg-amber-500/10 border-amber-500/30"
+                    : "bg-indigo-500/10 border-indigo-500/30"
                   : "bg-black/20 border-white/10 hover:border-white/20"
               }`}
             >
@@ -481,7 +511,9 @@ export default function BacktestControls({
                       selectedStrategies.includes(name)
                         ? color === "teal"
                           ? "text-teal-500"
-                          : "text-amber-500"
+                          : color === "amber"
+                          ? "text-amber-500"
+                          : "text-indigo-500"
                         : ""
                     }
                   />
@@ -493,7 +525,9 @@ export default function BacktestControls({
                             selectedStrategies.includes(name)
                               ? color === "teal"
                                 ? "text-teal-400"
-                                : "text-amber-400"
+                                : color === "amber"
+                                ? "text-amber-400"
+                                : "text-indigo-400"
                               : "text-zinc-300"
                           }
                         >
@@ -530,7 +564,9 @@ export default function BacktestControls({
                     className={`absolute z-40 top-full mt-1 left-0 right-0 bg-black/90 backdrop-blur-xl border ${
                       color === "teal"
                         ? "border-teal-500/20"
-                        : "border-amber-500/20"
+                        : color === "amber"
+                        ? "border-amber-500/20"
+                        : "border-indigo-500/20"
                     } rounded-lg p-3 shadow-xl`}
                   >
                     <div className="flex items-start justify-between mb-2">
@@ -539,7 +575,9 @@ export default function BacktestControls({
                           className={
                             color === "teal"
                               ? "text-teal-400"
-                              : "text-amber-400"
+                              : color === "amber"
+                              ? "text-amber-400"
+                              : "text-indigo-400"
                           }
                         >
                           {icon}
@@ -561,7 +599,9 @@ export default function BacktestControls({
                         className={`text-xs px-1.5 py-0.5 rounded-full ${
                           color === "teal"
                             ? "bg-teal-500/10 text-teal-400"
-                            : "bg-amber-500/10 text-amber-400"
+                            : color === "amber"
+                            ? "bg-amber-500/10 text-amber-400"
+                            : "bg-indigo-500/10 text-indigo-400"
                         }`}
                       >
                         {category}
@@ -576,7 +616,9 @@ export default function BacktestControls({
                         className={`text-xs flex items-center gap-1 ${
                           color === "teal"
                             ? "text-teal-400 hover:text-teal-300"
-                            : "text-amber-400 hover:text-amber-300"
+                            : color === "amber"
+                            ? "text-amber-400 hover:text-amber-300"
+                            : "text-indigo-400 hover:text-indigo-300"
                         } transition-colors`}
                       >
                         {selectedStrategies.includes(name)
@@ -612,7 +654,9 @@ export default function BacktestControls({
                   // The API will throw an error if the coin doesn't exist
                 }
 
-               
+                console.log("Running backtest with direction:", localDirection);
+                console.log("Running backtest with amount:", currentAmount);
+                console.log("Running backtest with leverage:", localLeverage);
                 // Pass the local direction explicitly to runBacktest
                 runBacktest(
                   selectedCoin || query.trim(),

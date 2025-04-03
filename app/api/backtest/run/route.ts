@@ -3,6 +3,7 @@ import { fetchWithRetry } from "@/utils/fetchWithRetry";
 
 import { macdCrossStrategy } from "@/lib/backtest/strategies/macdCrossStrategy";
 import { rsiReversalStrategy } from "@/lib/backtest/strategies/rsiReversalStrategy";
+import { breakoutStrategy } from "@/lib/backtest/strategies/breakoutStrategy";
 
 import {
   hasEnoughCredits,
@@ -13,11 +14,13 @@ import {
 const strategyRegistry = {
   "MACD Cross Strategy": "macdCrossStrategy",
   "RSI Reversal Strategy": "rsiReversalStrategy",
+  "Breakout Strategy": "breakoutStrategy", 
 };
 
 const strategyFunctions = {
   macdCrossStrategy,
   rsiReversalStrategy,
+  breakoutStrategy,
 };
 
 const COINGECKO_API_KEY = process.env.NEXT_PUBLIC_COINGECKO_API_KEY;

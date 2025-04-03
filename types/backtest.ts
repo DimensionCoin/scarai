@@ -1,11 +1,28 @@
 import type React from "react";
+
 export type ExitReason =
   | "MACD cross"
-  | "trend fade"
-  | "stop loss hit"
-  | "RSI target"
   | "RSI exit"
+  | "RSI target"
+  | "stop loss"
+  | "stop loss hit"
+  | "target hit"
+  | "trailing stop"
+  | "trend fade"
+  | "structure break"
+  | "invalidation level"
+  | "cooldown exit"
+  | "fakeout"
   | "time expiry";
+
+export type EntryReason =
+  | "MACD bullish cross"
+  | "MACD bearish cross"
+  | "RSI oversold"
+  | "RSI overbought"
+  | "trend confirmation"
+  | "pattern breakout"
+  | "momentum shift";
 
 export type Trade = {
   entryIndex: number;
@@ -13,15 +30,16 @@ export type Trade = {
   entryPrice: number;
   exitPrice: number;
   profitPercent: number;
-  spotProfitPercent?: number; // Add spot profit percent
+  spotProfitPercent?: number;
   direction: "long" | "short";
   entryAction: "buy to open" | "sell to open";
   exitAction: "sell to close" | "buy to close";
+  entryReason?: EntryReason;
   exitReason: ExitReason;
   strategy: string;
   positionSize?: number;
   profitAmount?: number;
-  spotProfitAmount?: number; // Add spot profit amount
+  spotProfitAmount?: number;
 };
 
 export type Summary = {
@@ -30,9 +48,9 @@ export type Summary = {
   winRate: number;
   totalReturn: number;
   profit: number | string;
-  spotReturn?: number; // Add spot return
-  spotProfit?: number | string; // Add spot profit
-  leverageUsed?: number; // Add leverage used
+  spotReturn?: number;
+  spotProfit?: number | string;
+  leverageUsed?: number;
 };
 
 export type StrategyInfo = {

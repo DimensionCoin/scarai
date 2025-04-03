@@ -1,5 +1,7 @@
 "use client";
 
+import type React from "react";
+
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import {
@@ -8,9 +10,99 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   AlertTriangle,
+  Zap,
 } from "lucide-react";
 import type { Trade, Summary } from "@/types/backtest";
 import { useBacktestData } from "@/hooks/use-backtest-data";
+
+// Strategy descriptions - can be extended with new strategies
+const STRATEGY_DESCRIPTIONS: Record<
+  string,
+  {
+    name: string;
+    description: string;
+    details: string[];
+    color: string;
+    entryConditions: string[];
+    exitConditions: string[];
+    icon: React.ReactNode;
+  }
+> = {
+  "MACD Cross Strategy": {
+    name: "MACD Cross Strategy",
+    description:
+      "A trend-following approach that generates buy signals when the MACD line crosses above the signal line (bullish momentum) and sell signals when it crosses below (bearish momentum). This strategy works best in trending markets.",
+    details: [
+      "Fast EMA (12 periods) and Slow EMA (26 periods) are calculated",
+      "MACD line = Fast EMA - Slow EMA",
+      "Signal line = 9-period EMA of MACD line",
+      "When MACD crosses above signal line, buy signal is generated",
+      "When MACD crosses below signal line, sell signal is generated",
+    ],
+    color: "teal",
+    entryConditions: ["MACD line crosses above signal line (buy)"],
+    exitConditions: ["MACD line crosses below signal line (sell)"],
+    icon: <TrendingUp className="h-3.5 w-3.5" />,
+  },
+  "RSI Reversal Strategy": {
+    name: "RSI Reversal Strategy",
+    description:
+      "A mean-reversion approach that identifies potential market reversals by buying when RSI indicates oversold conditions (below 30) and selling when it indicates overbought conditions (above 70). This strategy works best in ranging markets.",
+    details: [
+      "RSI measures the magnitude of recent price changes",
+      "RSI values range from 0 to 100",
+      "RSI below 30 indicates oversold conditions (potential buy)",
+      "RSI above 70 indicates overbought conditions (potential sell)",
+      "The strategy exits when RSI crosses back above/below 50",
+    ],
+    color: "amber",
+    entryConditions: ["RSI below 30 (oversold)"],
+    exitConditions: ["RSI above 70 (overbought)"],
+    icon: <ArrowUpRight className="h-3.5 w-3.5" />,
+  },
+  "Breakout Strategy": {
+    name: "Breakout Strategy",
+    description:
+      "A momentum strategy that identifies price breakouts from recent ranges, entering trades when price breaks above resistance or below support with confirmation from MACD momentum.",
+    details: [
+      "Identifies recent price range (high/low) over a lookback period",
+      "Enters long positions when price breaks above recent high with positive MACD momentum",
+      "Enters short positions when price breaks below recent low with negative MACD momentum",
+      "Uses stop losses to limit downside risk",
+      "Exits trades on trend fade, fakeout signals, or when profit targets are reached",
+    ],
+    color: "indigo",
+    entryConditions: [
+      "Price breaks above recent high (long) or below recent low (short)",
+    ],
+    exitConditions: [
+      "Stop loss hit, trend fade, fakeout signal, or time expiry",
+    ],
+    icon: <Zap className="h-3.5 w-3.5" />,
+  },
+};
+
+// Helper function to get strategy info or a default if not found
+const getStrategyInfo = (strategyName: string) => {
+  return (
+    STRATEGY_DESCRIPTIONS[strategyName] || {
+      name: strategyName,
+      description: `Trading strategy that executes based on specific market conditions.`,
+      details: ["Strategy details not available"],
+      color: "zinc",
+      entryConditions: ["Custom entry conditions"],
+      exitConditions: ["Custom exit conditions"],
+      icon: <BarChart className="h-3.5 w-3.5" />,
+    }
+  );
+};
+
+// Helper function to get active strategies from both selected strategies and trades
+const getActiveStrategies = (selectedStrategies: string[], trades: Trade[]) => {
+  const fromSelected = new Set(selectedStrategies);
+  const fromTrades = new Set(trades.map((t) => t.strategy));
+  return Array.from(new Set([...fromSelected, ...fromTrades]));
+};
 
 type BacktestResultsProps = {
   view: "trades" | "results" | "education";
@@ -516,68 +608,44 @@ export default function BacktestResults({
               {selectedStrategies.length > 0 || trades.length > 0 ? (
                 <>
                   <span className="font-medium text-teal-400 block mb-2">
-                    {selectedStrategies.length === 1 ||
-                    (selectedStrategies.length === 0 &&
-                      trades.length > 0 &&
-                      trades[0]?.strategy)
+                    {getActiveStrategies(selectedStrategies, trades).length ===
+                    1
                       ? `This backtest uses the ${
-                          selectedStrategies[0] || trades[0]?.strategy
+                          getActiveStrategies(selectedStrategies, trades)[0]
                         } exclusively.`
                       : `This backtest combines ${
-                          selectedStrategies.length ||
-                          new Set(trades.map((t) => t.strategy)).size
+                          getActiveStrategies(selectedStrategies, trades).length
                         } different trading strategies:`}
                   </span>
 
-                  {(selectedStrategies.includes("MACD Cross Strategy") ||
-                    trades.some(
-                      (t) => t.strategy === "MACD Cross Strategy"
-                    )) && (
-                    <span className="block mb-2">
-                      <span className="text-teal-400 font-medium">
-                        MACD Cross Strategy:
-                      </span>{" "}
-                      A trend-following approach that generates buy signals when
-                      the MACD line crosses above the signal line (bullish
-                      momentum) and sell signals when it crosses below (bearish
-                      momentum). This strategy works best in trending markets.
-                    </span>
+                  {getActiveStrategies(selectedStrategies, trades).map(
+                    (strategyName) => {
+                      const strategyInfo = getStrategyInfo(strategyName);
+                      return (
+                        <span key={strategyName} className="block mb-2">
+                          <span
+                            className={`text-${strategyInfo.color}-400 font-medium`}
+                          >
+                            {strategyName}:
+                          </span>{" "}
+                          {strategyInfo.description}
+                        </span>
+                      );
+                    }
                   )}
 
-                  {(selectedStrategies.includes("RSI Reversal Strategy") ||
-                    trades.some(
-                      (t) => t.strategy === "RSI Reversal Strategy"
-                    )) && (
-                    <span className="block mb-2">
-                      <span className="text-amber-400 font-medium">
-                        RSI Reversal Strategy:
+                  {getActiveStrategies(selectedStrategies, trades).length >
+                    1 && (
+                    <span className="block mt-2 p-2 bg-black/40 rounded-md">
+                      <span className="text-indigo-400 font-medium">
+                        Strategy Combination:
                       </span>{" "}
-                      A mean-reversion approach that identifies potential market
-                      reversals by buying when RSI indicates oversold conditions
-                      (below 30) and selling when it indicates overbought
-                      conditions (above 70). This strategy works best in ranging
-                      markets.
+                      By combining multiple trading approaches, this backtest
+                      attempts to capture profits in different market
+                      conditions. Each strategy targets specific market
+                      behaviors, potentially improving overall performance.
                     </span>
                   )}
-
-                  {(selectedStrategies.includes("MACD Cross Strategy") ||
-                    trades.some((t) => t.strategy === "MACD Cross Strategy")) &&
-                    (selectedStrategies.includes("RSI Reversal Strategy") ||
-                      trades.some(
-                        (t) => t.strategy === "RSI Reversal Strategy"
-                      )) && (
-                      <span className="block mt-2 p-2 bg-black/40 rounded-md">
-                        <span className="text-indigo-400 font-medium">
-                          Strategy Combination:
-                        </span>{" "}
-                        By combining trend-following (MACD) with mean-reversion
-                        (RSI) techniques, this backtest attempts to capture
-                        profits in both trending and ranging market conditions.
-                        The MACD strategy helps identify longer-term momentum
-                        while the RSI strategy catches potential reversals at
-                        extreme levels.
-                      </span>
-                    )}
 
                   {trades.length > 0 && (
                     <span className="block mt-3 border-t border-white/10 pt-2">
@@ -611,99 +679,51 @@ export default function BacktestResults({
             </p>
           </div>
 
-          {(selectedStrategies.includes("MACD Cross Strategy") ||
-            trades.some((t) => t.strategy === "MACD Cross Strategy")) && (
-            <Card className="bg-black/30 border-teal-500/20 p-3 mb-3">
-              <h4 className="text-sm font-medium text-teal-400 mb-2 flex items-center gap-2">
-                <TrendingUp className="h-3.5 w-3.5" />
-                MACD Cross Strategy
-              </h4>
-              <p className="text-xs text-zinc-400 mb-2">
-                The Moving Average Convergence Divergence (MACD) strategy
-                identifies momentum changes by tracking the relationship between
-                two moving averages of a price. When the MACD line crosses above
-                the signal line, it generates a buy signal. When it crosses
-                below, it generates a sell signal.
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span className="text-zinc-500">Entry Signal:</span>{" "}
-                  <span className="text-teal-400">
-                    MACD line crosses above signal line (buy)
-                  </span>
-                </div>
-                <div>
-                  <span className="text-zinc-500">Exit Signal:</span>{" "}
-                  <span className="text-rose-400">
-                    MACD line crosses below signal line (sell)
-                  </span>
-                </div>
-              </div>
-              <div className="mt-3 p-2 bg-black/40 rounded-md text-xs text-zinc-400">
-                <p className="mb-1 font-medium text-zinc-300">How it works:</p>
-                <ol className="list-decimal pl-4 space-y-1">
-                  <li>
-                    Fast EMA (12 periods) and Slow EMA (26 periods) are
-                    calculated
-                  </li>
-                  <li>MACD line = Fast EMA - Slow EMA</li>
-                  <li>Signal line = 9-period EMA of MACD line</li>
-                  <li>
-                    When MACD crosses above signal line, buy signal is generated
-                  </li>
-                  <li>
-                    When MACD crosses below signal line, sell signal is
-                    generated
-                  </li>
-                </ol>
-              </div>
-            </Card>
-          )}
-
-          {(selectedStrategies.includes("RSI Reversal Strategy") ||
-            trades.some((t) => t.strategy === "RSI Reversal Strategy")) && (
-            <Card className="bg-black/30 border-amber-500/20 p-3">
-              <h4 className="text-sm font-medium text-amber-400 mb-2 flex items-center gap-2">
-                <ArrowUpRight className="h-3.5 w-3.5" />
-                RSI Reversal Strategy
-              </h4>
-              <p className="text-xs text-zinc-400 mb-2">
-                The Relative Strength Index (RSI) strategy identifies potential
-                market reversals by measuring the speed and change of price
-                movements. When RSI falls below 30, the market is considered
-                oversold, generating a buy signal. When RSI rises above 70, the
-                market is considered overbought, generating a sell signal.
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span className="text-zinc-500">Long Entry:</span>{" "}
-                  <span className="text-teal-400">RSI below 30 (oversold)</span>
-                </div>
-                <div>
-                  <span className="text-zinc-500">Short Entry:</span>{" "}
-                  <span className="text-rose-400">
-                    RSI above 70 (overbought)
-                  </span>
-                </div>
-              </div>
-              <div className="mt-3 p-2 bg-black/40 rounded-md text-xs text-zinc-400">
-                <p className="mb-1 font-medium text-zinc-300">How it works:</p>
-                <ol className="list-decimal pl-4 space-y-1">
-                  <li>RSI measures the magnitude of recent price changes</li>
-                  <li>RSI values range from 0 to 100</li>
-                  <li>
-                    RSI below 30 indicates oversold conditions (potential buy)
-                  </li>
-                  <li>
-                    RSI above 70 indicates overbought conditions (potential
-                    sell)
-                  </li>
-                  <li>
-                    The strategy exits when RSI crosses back above/below 50
-                  </li>
-                </ol>
-              </div>
-            </Card>
+          {/* Render strategy cards dynamically */}
+          {getActiveStrategies(selectedStrategies, trades).map(
+            (strategyName) => {
+              const strategyInfo = getStrategyInfo(strategyName);
+              return (
+                <Card
+                  key={strategyName}
+                  className={`bg-black/30 border-${strategyInfo.color}-500/20 p-3 mb-3`}
+                >
+                  <h4
+                    className={`text-sm font-medium text-${strategyInfo.color}-400 mb-2 flex items-center gap-2`}
+                  >
+                    {strategyInfo.icon}
+                    {strategyName}
+                  </h4>
+                  <p className="text-xs text-zinc-400 mb-2">
+                    {strategyInfo.description}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-zinc-500">Entry Signal:</span>{" "}
+                      <span className="text-teal-400">
+                        {strategyInfo.entryConditions[0]}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-500">Exit Signal:</span>{" "}
+                      <span className="text-rose-400">
+                        {strategyInfo.exitConditions[0]}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-3 p-2 bg-black/40 rounded-md text-xs text-zinc-400">
+                    <p className="mb-1 font-medium text-zinc-300">
+                      How it works:
+                    </p>
+                    <ol className="list-decimal pl-4 space-y-1">
+                      {strategyInfo.details.map((detail, i) => (
+                        <li key={i}>{detail}</li>
+                      ))}
+                    </ol>
+                  </div>
+                </Card>
+              );
+            }
           )}
 
           {selectedStrategies.length === 0 && trades.length === 0 && (

@@ -1,9 +1,9 @@
-import { calculateRSI } from "@/lib/indicators/calculateIndicators";
+import { calculateEMA } from "@/utils/calculateEMA";
 import type { ExitReason, Trade, BacktestResult } from "@/types/backtest";
 
-export const rsiReversalStrategyName = "RSI Reversal Strategy";
+export const breakoutStrategyName = "Breakout Strategy";
 
-export function rsiReversalStrategy(
+export function breakoutStrategy(
   prices: number[][],
   config: {
     direction: "long" | "short" | "both";
@@ -18,143 +18,126 @@ export function rsiReversalStrategy(
   const trades: Trade[] = [];
   let accountValue = amount;
   let spotAccountValue = amount;
-  let cooldown = 0;
+
+  const lookback = 20;
+  const threshold = 0.002; // 0.2% above breakout
+  const closePrices = prices.map(([, p]) => p);
+  const macdFast = calculateEMA(closePrices, 12);
+  const macdSlow = calculateEMA(closePrices, 26);
+  const macdLine = macdFast.map((v, i) => v - macdSlow[i]);
 
   let longEntryIndex: number | null = null;
   let longEntryPrice = 0;
-  let longPositionSize = 0;
 
   let shortEntryIndex: number | null = null;
   let shortEntryPrice = 0;
-  let shortPositionSize = 0;
 
-  const oversoldThreshold = 30;
-  const overboughtThreshold = 70;
-  const exitThreshold = 50;
-
-  for (let i = 14; i < prices.length; i++) {
+  for (let i = lookback; i < prices.length; i++) {
     const price = prices[i][1];
-
     if (accountValue <= 0) break;
-    if (cooldown > 0) {
-      cooldown--;
-      continue;
-    }
 
-    const rsi = calculateRSI(prices.slice(0, i + 1));
-    const prevRsi = calculateRSI(prices.slice(0, i)) || 50;
-    const momentumUp = rsi > prevRsi;
-    const momentumDown = rsi < prevRsi;
+    const past = prices.slice(i - lookback, i).map(([, p]) => p);
+    const high = Math.max(...past);
+    const low = Math.min(...past);
+
+    const brokeOut = price > high * (1 + threshold);
+    const brokeDown = price < low * (1 - threshold);
+
+    const momentumUp = i > 1 && macdLine[i] > macdLine[i - 1];
+    const momentumDown = i > 1 && macdLine[i] < macdLine[i - 1];
 
     // === LONG ENTRY ===
-    if (
-      generateLongs &&
-      longEntryIndex === null &&
-      prevRsi < oversoldThreshold &&
-      rsi >= oversoldThreshold &&
-      momentumUp
-    ) {
+    if (generateLongs && longEntryIndex === null && brokeOut && momentumUp) {
       longEntryIndex = i;
       longEntryPrice = price;
-      longPositionSize = accountValue * 0.5;
     }
 
     // === SHORT ENTRY ===
     if (
       generateShorts &&
       shortEntryIndex === null &&
-      prevRsi > overboughtThreshold &&
-      rsi <= overboughtThreshold &&
+      brokeDown &&
       momentumDown
     ) {
       shortEntryIndex = i;
       shortEntryPrice = price;
-      shortPositionSize = accountValue * 0.5;
     }
 
     // === LONG EXIT ===
     if (generateLongs && longEntryIndex !== null) {
-      let exitReason: ExitReason | null = null;
       const pnl = ((price - longEntryPrice) / longEntryPrice) * 100;
+      let exitReason: ExitReason | null = null;
 
-      if (rsi > exitThreshold) exitReason = "RSI exit";
-      else if (pnl <= -10) exitReason = "stop loss hit";
+      if (pnl <= -10) exitReason = "stop loss hit";
       else if (pnl >= 25) exitReason = "trend fade";
+      else if (price < high) exitReason = "fakeout";
       else if (i === prices.length - 1) exitReason = "time expiry";
 
       if (exitReason) {
-        const leveragedPnl = pnl * leverage;
-        const profitAmount = (longPositionSize * leveragedPnl) / 100;
-        const spotProfitAmount = (longPositionSize * pnl) / 100;
+        const positionSize = accountValue * 0.5;
+        const leveragedPnL = pnl * leverage;
+        const profit = (positionSize * leveragedPnL) / 100;
+        const spotProfit = (positionSize * pnl) / 100;
 
         trades.push({
           entryIndex: longEntryIndex, // Ensure this is set correctly
           exitIndex: i, // This is the current index when exit occurs
           entryPrice: longEntryPrice,
           exitPrice: price,
-          profitPercent: leveragedPnl,
+          profitPercent: leveragedPnL,
           spotProfitPercent: pnl,
           direction: "long",
           entryAction: "buy to open",
           exitAction: "sell to close",
           exitReason,
-          strategy: rsiReversalStrategyName,
-          positionSize: longPositionSize,
-          profitAmount,
-          spotProfitAmount,
+          strategy: breakoutStrategyName,
+          positionSize,
+          profitAmount: profit,
+          spotProfitAmount: spotProfit,
         });
 
-        accountValue += profitAmount;
-        spotAccountValue += spotProfitAmount;
-
-        accountValue = Math.max(accountValue, 0);
-        spotAccountValue = Math.max(spotAccountValue, 0);
-
+        accountValue = Math.max(accountValue + profit, 0);
+        spotAccountValue = Math.max(spotAccountValue + spotProfit, 0);
         longEntryIndex = null;
-        cooldown = 5;
       }
     }
 
     // === SHORT EXIT ===
     if (generateShorts && shortEntryIndex !== null) {
-      let exitReason: ExitReason | null = null;
       const pnl = ((shortEntryPrice - price) / shortEntryPrice) * 100;
+      let exitReason: ExitReason | null = null;
 
-      if (rsi < exitThreshold) exitReason = "RSI exit";
-      else if (pnl <= -10) exitReason = "stop loss hit";
+      if (pnl <= -10) exitReason = "stop loss hit";
       else if (pnl >= 25) exitReason = "trend fade";
+      else if (price > low) exitReason = "fakeout";
       else if (i === prices.length - 1) exitReason = "time expiry";
 
       if (exitReason) {
-        const leveragedPnl = pnl * leverage;
-        const profitAmount = (shortPositionSize * leveragedPnl) / 100;
-        const spotProfitAmount = (shortPositionSize * pnl) / 100;
+        const positionSize = accountValue * 0.5;
+        const leveragedPnL = pnl * leverage;
+        const profit = (positionSize * leveragedPnL) / 100;
+        const spotProfit = (positionSize * pnl) / 100;
 
         trades.push({
           entryIndex: shortEntryIndex, // Ensure this is set correctly
           exitIndex: i, // This is the current index when exit occurs
           entryPrice: shortEntryPrice,
           exitPrice: price,
-          profitPercent: leveragedPnl,
+          profitPercent: leveragedPnL,
           spotProfitPercent: pnl,
           direction: "short",
           entryAction: "sell to open",
           exitAction: "buy to close",
           exitReason,
-          strategy: rsiReversalStrategyName,
-          positionSize: shortPositionSize,
-          profitAmount,
-          spotProfitAmount,
+          strategy: breakoutStrategyName,
+          positionSize,
+          profitAmount: profit,
+          spotProfitAmount: spotProfit,
         });
 
-        accountValue += profitAmount;
-        spotAccountValue += spotProfitAmount;
-
-        accountValue = Math.max(accountValue, 0);
-        spotAccountValue = Math.max(spotAccountValue, 0);
-
+        accountValue = Math.max(accountValue + profit, 0);
+        spotAccountValue = Math.max(spotAccountValue + spotProfit, 0);
         shortEntryIndex = null;
-        cooldown = 5;
       }
     }
   }
@@ -171,7 +154,7 @@ export function rsiReversalStrategy(
     totalReturn,
     spotTotalReturn,
     winRate,
-    strategyName: rsiReversalStrategyName,
+    strategyName: breakoutStrategyName,
     leverageUsed: leverage,
     spotAccountValue,
   };

@@ -1,6 +1,7 @@
 import type { BacktestResult } from "@/types/backtest";
 import { macdCrossStrategy } from "@/lib/backtest/strategies/macdCrossStrategy";
 import { rsiReversalStrategy } from "@/lib/backtest/strategies/rsiReversalStrategy";
+import { breakoutStrategy } from "@/lib/backtest/strategies/breakoutStrategy"; // ✅ NEW
 
 // Make sure the Strategy type uses the BacktestResult return type
 type Strategy = (
@@ -14,7 +15,7 @@ type Strategy = (
 
 export function runBacktests(
   prices: number[][],
-  amount = 1000 // Add amount parameter with default
+  amount = 1000
 ): {
   bestStrategy: BacktestResult;
   summary: string;
@@ -23,6 +24,7 @@ export function runBacktests(
   const strategies: Strategy[] = [
     (p, c) => macdCrossStrategy(p, c),
     (p, c) => rsiReversalStrategy(p, c),
+    (p, c) => breakoutStrategy(p, c), // ✅ NEW STRATEGY
   ];
 
   const results = strategies.map((strategy) =>

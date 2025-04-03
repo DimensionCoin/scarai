@@ -17,13 +17,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useMobile } from "@/hooks/use-mobile";
 
-
 export default function BacktestPlayground() {
   const [fullscreen, setFullscreen] = useState(false);
   const [activeTab, setActiveTab] = useState("chart");
   const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useMobile();
-
 
   const {
     selectedCoin,
@@ -241,6 +239,7 @@ export default function BacktestPlayground() {
                         currentPrice={currentPrice}
                         totalProfit={totalProfit}
                         activeTrades={activeTrades}
+                        completedTrades={completedTrades} // Explicitly pass completedTrades
                       />
                     </TabsContent>
                   ) : null}

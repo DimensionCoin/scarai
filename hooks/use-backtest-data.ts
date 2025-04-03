@@ -182,7 +182,6 @@ export function useBacktestData() {
         leverage: currentLeverage,
       };
 
-      console.log("Request body:", JSON.stringify(requestBody));
 
       const res = await fetch(
         `/api/backtest/run?userId=${encodeURIComponent(userId)}&t=${timestamp}`,
