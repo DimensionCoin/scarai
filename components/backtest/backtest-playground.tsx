@@ -16,24 +16,20 @@ import { useBacktestData } from "@/hooks/use-backtest-data";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useMobile } from "@/hooks/use-mobile";
-import { useUserContext } from "@/providers/UserProvider";
-import { useUser } from "@clerk/nextjs";
+
 
 export default function BacktestPlayground() {
   const [fullscreen, setFullscreen] = useState(false);
   const [activeTab, setActiveTab] = useState("chart");
   const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useMobile();
-  const { refreshUser } = useUserContext();
-  const { user } = useUser();
-  const userId = user?.id;
+
 
   const {
     selectedCoin,
     selectedStrategies,
     amount,
     setAmount,
-    tradeDirection,
     prices,
     trades,
     summary,
@@ -95,71 +91,13 @@ export default function BacktestPlayground() {
   }, [fullscreen]);
 
   // Add this function to handle running a new backtest
-  const handleRunBacktest = (
+  const handleRunBacktest = async (
     coinId?: string,
     strategies?: string[],
     direction?: "long" | "short" | "both"
   ) => {
-    // Stop playback if it's running
-    if (playing) {
-      setPlaying(false);
-    }
-
-    // Use the provided direction or fall back to the current direction
-    const directionToUse = direction || tradeDirection;
-
-    // Use the current leverage value from the ref
-    const currentLeverage = leverageRef.current;
-
-    // Log the current amount and leverage before running the backtest
-    console.log(`BacktestPlayground: Running backtest with amount: $${amount}`);
-    console.log(
-      `BacktestPlayground: Running backtest with leverage: ${currentLeverage}x`
-    );
-
-    // Create a direct API call instead of using the hook
-    const runDirectBacktest = async () => {
-      try {
-        const timestamp = Date.now();
-        const requestBody = {
-          coin: coinId || selectedCoin || "",
-          amount: amount,
-          strategies: strategies || selectedStrategies,
-          direction: directionToUse,
-          leverage: currentLeverage, // Use the current leverage from the ref
-        };
-
-        console.log("Direct API call with body:", JSON.stringify(requestBody));
-
-        const res = await fetch(
-          `/api/backtest/run?userId=${encodeURIComponent(
-            userId ?? ""
-          )}&t=${timestamp}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(requestBody),
-          }
-        );
-
-        if (!res.ok) {
-          throw new Error(`API Error (${res.status}): ${await res.text()}`);
-        }
-
-        const data = await res.json();
-        console.log("API response:", data);
-        refreshUser();
-         // Now use the hook's runBacktest to update the UI
-        return runBacktest(coinId, strategies, directionToUse);
-      } catch (error) {
-        console.error("Direct backtest error:", error);
-        throw error;
-      }
-    };
-
-    return runDirectBacktest();
+    if (playing) setPlaying(false);
+    await runBacktest(coinId, strategies, direction);
   };
 
   // Check if backtest data is loaded
