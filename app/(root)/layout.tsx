@@ -23,12 +23,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SCAR",
   description: "Make more confident choices",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-  },
 };
 
 export default function RootLayout({
@@ -38,18 +32,9 @@ export default function RootLayout({
     <ClerkProvider>
       <UserProvider>
         <OracleButton>
-          <html lang="en" className="h-full overflow-x-hidden">
-            <head>
-              {/* Ensure proper mobile rendering */}
-              <meta name="theme-color" content="#18181b" />
-              <meta name="apple-mobile-web-app-capable" content="yes" />
-              <meta
-                name="apple-mobile-web-app-status-bar-style"
-                content="black-translucent"
-              />
-            </head>
+          <html lang="en">
             <body
-              className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-900 text-zinc-100 h-full overflow-x-hidden`}
+              className={`${geistSans.variable} ${geistMono.variable} antialiased bg-zinc-900 text-zinc-100`}
             >
               {/* Global background gradients and decorative elements */}
               <div className="fixed inset-0 bg-zinc-900/80 backdrop-blur-sm -z-10"></div>
@@ -76,7 +61,7 @@ export default function RootLayout({
                     </aside>
 
                     {/* Main Content Area with left margin on md+ screens */}
-                    <main className="flex-1 w-full md:ml-50 overflow-auto p-3 pb-safe">
+                    <main className="flex-1 w-full md:ml-50 overflow-auto p-3">
                       {children}
                     </main>
                   </div>
