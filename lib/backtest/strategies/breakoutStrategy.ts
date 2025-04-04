@@ -20,7 +20,7 @@ export function breakoutStrategy(
   let spotAccountValue = amount;
 
   const lookback = 20;
-  const threshold = 0.002; // 0.2% above breakout
+  const threshold = 0.002;
   const closePrices = prices.map(([, p]) => p);
   const macdFast = calculateEMA(closePrices, 12);
   const macdSlow = calculateEMA(closePrices, 26);
@@ -28,9 +28,11 @@ export function breakoutStrategy(
 
   let longEntryIndex: number | null = null;
   let longEntryPrice = 0;
+  let longPositionSize = 0;
 
   let shortEntryIndex: number | null = null;
   let shortEntryPrice = 0;
+  let shortPositionSize = 0;
 
   for (let i = lookback; i < prices.length; i++) {
     const price = prices[i][1];
@@ -50,6 +52,7 @@ export function breakoutStrategy(
     if (generateLongs && longEntryIndex === null && brokeOut && momentumUp) {
       longEntryIndex = i;
       longEntryPrice = price;
+      longPositionSize = accountValue * 0.5;
     }
 
     // === SHORT ENTRY ===
@@ -61,6 +64,7 @@ export function breakoutStrategy(
     ) {
       shortEntryIndex = i;
       shortEntryPrice = price;
+      shortPositionSize = accountValue * 0.5;
     }
 
     // === LONG EXIT ===
@@ -74,14 +78,20 @@ export function breakoutStrategy(
       else if (i === prices.length - 1) exitReason = "time expiry";
 
       if (exitReason) {
-        const positionSize = accountValue * 0.5;
         const leveragedPnL = pnl * leverage;
-        const profit = (positionSize * leveragedPnL) / 100;
-        const spotProfit = (positionSize * pnl) / 100;
+        const profitAmount = (longPositionSize * leveragedPnL) / 100;
+        const spotProfitAmount = (longPositionSize * pnl) / 100;
+
+        accountValue += profitAmount;
+        spotAccountValue += spotProfitAmount;
+
+        // Liquidation guard
+        accountValue = Math.max(0, accountValue);
+        spotAccountValue = Math.max(0, spotAccountValue);
 
         trades.push({
-          entryIndex: longEntryIndex, // Ensure this is set correctly
-          exitIndex: i, // This is the current index when exit occurs
+          entryIndex: longEntryIndex,
+          exitIndex: i,
           entryPrice: longEntryPrice,
           exitPrice: price,
           profitPercent: leveragedPnL,
@@ -91,13 +101,11 @@ export function breakoutStrategy(
           exitAction: "sell to close",
           exitReason,
           strategy: breakoutStrategyName,
-          positionSize,
-          profitAmount: profit,
-          spotProfitAmount: spotProfit,
+          positionSize: longPositionSize,
+          profitAmount,
+          spotProfitAmount,
         });
 
-        accountValue = Math.max(accountValue + profit, 0);
-        spotAccountValue = Math.max(spotAccountValue + spotProfit, 0);
         longEntryIndex = null;
       }
     }
@@ -113,14 +121,20 @@ export function breakoutStrategy(
       else if (i === prices.length - 1) exitReason = "time expiry";
 
       if (exitReason) {
-        const positionSize = accountValue * 0.5;
         const leveragedPnL = pnl * leverage;
-        const profit = (positionSize * leveragedPnL) / 100;
-        const spotProfit = (positionSize * pnl) / 100;
+        const profitAmount = (shortPositionSize * leveragedPnL) / 100;
+        const spotProfitAmount = (shortPositionSize * pnl) / 100;
+
+        accountValue += profitAmount;
+        spotAccountValue += spotProfitAmount;
+
+        // Liquidation guard
+        accountValue = Math.max(0, accountValue);
+        spotAccountValue = Math.max(0, spotAccountValue);
 
         trades.push({
-          entryIndex: shortEntryIndex, // Ensure this is set correctly
-          exitIndex: i, // This is the current index when exit occurs
+          entryIndex: shortEntryIndex,
+          exitIndex: i,
           entryPrice: shortEntryPrice,
           exitPrice: price,
           profitPercent: leveragedPnL,
@@ -130,13 +144,11 @@ export function breakoutStrategy(
           exitAction: "buy to close",
           exitReason,
           strategy: breakoutStrategyName,
-          positionSize,
-          profitAmount: profit,
-          spotProfitAmount: spotProfit,
+          positionSize: shortPositionSize,
+          profitAmount,
+          spotProfitAmount,
         });
 
-        accountValue = Math.max(accountValue + profit, 0);
-        spotAccountValue = Math.max(spotAccountValue + spotProfit, 0);
         shortEntryIndex = null;
       }
     }

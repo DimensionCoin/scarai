@@ -24,7 +24,7 @@ export function macdCrossStrategy(
   const ema26 = calculateEMA(closePrices, 26);
   const macdLine = ema12.map((v, i) => v - ema26[i]);
   const signalLine = calculateEMA(macdLine, 9);
-  const ema50 = calculateEMA(closePrices, 50); // trend filter
+  const ema50 = calculateEMA(closePrices, 50);
 
   let longEntryIndex: number | null = null;
   let longEntryPrice = 0;
@@ -40,7 +40,6 @@ export function macdCrossStrategy(
 
   for (let i = 50; i < prices.length; i++) {
     const price = prices[i][1];
-
     if (accountValue <= 0) break;
     if (cooldown > 0) {
       cooldown--;
@@ -51,7 +50,6 @@ export function macdCrossStrategy(
     const macdPrev = macdLine[i - 1];
     const signal = signalLine[i];
     const signalPrev = signalLine[i - 1];
-
     const crossedUp = macdPrev < signalPrev && macd > signal && macd > macdPrev;
     const crossedDown =
       macdPrev > signalPrev && macd < signal && macd < macdPrev;
@@ -82,41 +80,39 @@ export function macdCrossStrategy(
     // === LONG EXIT ===
     if (generateLongs && longEntryIndex !== null) {
       longHighWater = Math.max(longHighWater, price);
-      const unrealized = ((price - longEntryPrice) / longEntryPrice) * 100;
+      const pnl = ((price - longEntryPrice) / longEntryPrice) * 100;
 
       let exitReason: ExitReason | null = null;
       if (crossedDown) exitReason = "MACD cross";
-      else if (unrealized <= -10) exitReason = "stop loss hit";
-      else if (unrealized >= 25) exitReason = "trend fade";
+      else if (pnl <= -10) exitReason = "stop loss hit";
+      else if (pnl >= 25) exitReason = "trend fade";
       else if (price < longHighWater * 0.975) exitReason = "trailing stop";
       else if (i === prices.length - 1) exitReason = "time expiry";
 
       if (exitReason) {
-        const leveragedPnl = unrealized * leverage;
-        const profitAmount = (longPositionSize * leveragedPnl) / 100;
-        const spotProfitAmount = (longPositionSize * unrealized) / 100;
+        const leveraged = pnl * leverage;
+        const profit = (longPositionSize * leveraged) / 100;
+        const spotProfit = (longPositionSize * pnl) / 100;
 
         trades.push({
           entryIndex: longEntryIndex,
           exitIndex: i,
           entryPrice: longEntryPrice,
           exitPrice: price,
-          profitPercent: leveragedPnl,
-          spotProfitPercent: unrealized,
+          profitPercent: leveraged,
+          spotProfitPercent: pnl,
           direction: "long",
           entryAction: "buy to open",
           exitAction: "sell to close",
           exitReason,
           strategy: macdCrossStrategyName,
           positionSize: longPositionSize,
-          profitAmount,
-          spotProfitAmount,
+          profitAmount: profit,
+          spotProfitAmount: spotProfit,
         });
 
-        accountValue += profitAmount;
-        spotAccountValue += spotProfitAmount;
-        accountValue = Math.max(accountValue, 0);
-        spotAccountValue = Math.max(spotAccountValue, 0);
+        accountValue = Math.max(accountValue + profit, 0);
+        spotAccountValue = Math.max(spotAccountValue + spotProfit, 0);
         longEntryIndex = null;
         cooldown = 3;
       }
@@ -125,41 +121,39 @@ export function macdCrossStrategy(
     // === SHORT EXIT ===
     if (generateShorts && shortEntryIndex !== null) {
       shortLowWater = Math.min(shortLowWater, price);
-      const unrealized = ((shortEntryPrice - price) / shortEntryPrice) * 100;
+      const pnl = ((shortEntryPrice - price) / shortEntryPrice) * 100;
 
       let exitReason: ExitReason | null = null;
       if (crossedUp) exitReason = "MACD cross";
-      else if (unrealized <= -10) exitReason = "stop loss hit";
-      else if (unrealized >= 25) exitReason = "trend fade";
+      else if (pnl <= -10) exitReason = "stop loss hit";
+      else if (pnl >= 25) exitReason = "trend fade";
       else if (price > shortLowWater * 1.025) exitReason = "trailing stop";
       else if (i === prices.length - 1) exitReason = "time expiry";
 
       if (exitReason) {
-        const leveragedPnl = unrealized * leverage;
-        const profitAmount = (shortPositionSize * leveragedPnl) / 100;
-        const spotProfitAmount = (shortPositionSize * unrealized) / 100;
+        const leveraged = pnl * leverage;
+        const profit = (shortPositionSize * leveraged) / 100;
+        const spotProfit = (shortPositionSize * pnl) / 100;
 
         trades.push({
           entryIndex: shortEntryIndex,
           exitIndex: i,
           entryPrice: shortEntryPrice,
           exitPrice: price,
-          profitPercent: leveragedPnl,
-          spotProfitPercent: unrealized,
+          profitPercent: leveraged,
+          spotProfitPercent: pnl,
           direction: "short",
           entryAction: "sell to open",
           exitAction: "buy to close",
           exitReason,
           strategy: macdCrossStrategyName,
           positionSize: shortPositionSize,
-          profitAmount,
-          spotProfitAmount,
+          profitAmount: profit,
+          spotProfitAmount: spotProfit,
         });
 
-        accountValue += profitAmount;
-        spotAccountValue += spotProfitAmount;
-        accountValue = Math.max(accountValue, 0);
-        spotAccountValue = Math.max(spotAccountValue, 0);
+        accountValue = Math.max(accountValue + profit, 0);
+        spotAccountValue = Math.max(spotAccountValue + spotProfit, 0);
         shortEntryIndex = null;
         cooldown = 3;
       }

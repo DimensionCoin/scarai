@@ -20,6 +20,10 @@ export function rsiReversalStrategy(
   let spotAccountValue = amount;
   let cooldown = 0;
 
+  const oversoldThreshold = 30;
+  const overboughtThreshold = 70;
+  const exitThreshold = 50;
+
   let longEntryIndex: number | null = null;
   let longEntryPrice = 0;
   let longPositionSize = 0;
@@ -28,14 +32,9 @@ export function rsiReversalStrategy(
   let shortEntryPrice = 0;
   let shortPositionSize = 0;
 
-  const oversoldThreshold = 30;
-  const overboughtThreshold = 70;
-  const exitThreshold = 50;
-
   for (let i = 14; i < prices.length; i++) {
     const price = prices[i][1];
-
-    if (accountValue <= 0) break;
+    if (accountValue <= 0) break; // Simulate liquidation
     if (cooldown > 0) {
       cooldown--;
       continue;
@@ -74,8 +73,8 @@ export function rsiReversalStrategy(
 
     // === LONG EXIT ===
     if (generateLongs && longEntryIndex !== null) {
-      let exitReason: ExitReason | null = null;
       const pnl = ((price - longEntryPrice) / longEntryPrice) * 100;
+      let exitReason: ExitReason | null = null;
 
       if (rsi > exitThreshold) exitReason = "RSI exit";
       else if (pnl <= -10) exitReason = "stop loss hit";
@@ -88,8 +87,8 @@ export function rsiReversalStrategy(
         const spotProfitAmount = (longPositionSize * pnl) / 100;
 
         trades.push({
-          entryIndex: longEntryIndex, // Ensure this is set correctly
-          exitIndex: i, // This is the current index when exit occurs
+          entryIndex: longEntryIndex,
+          exitIndex: i,
           entryPrice: longEntryPrice,
           exitPrice: price,
           profitPercent: leveragedPnl,
@@ -104,11 +103,8 @@ export function rsiReversalStrategy(
           spotProfitAmount,
         });
 
-        accountValue += profitAmount;
-        spotAccountValue += spotProfitAmount;
-
-        accountValue = Math.max(accountValue, 0);
-        spotAccountValue = Math.max(spotAccountValue, 0);
+        accountValue = Math.max(accountValue + profitAmount, 0);
+        spotAccountValue = Math.max(spotAccountValue + spotProfitAmount, 0);
 
         longEntryIndex = null;
         cooldown = 5;
@@ -117,8 +113,8 @@ export function rsiReversalStrategy(
 
     // === SHORT EXIT ===
     if (generateShorts && shortEntryIndex !== null) {
-      let exitReason: ExitReason | null = null;
       const pnl = ((shortEntryPrice - price) / shortEntryPrice) * 100;
+      let exitReason: ExitReason | null = null;
 
       if (rsi < exitThreshold) exitReason = "RSI exit";
       else if (pnl <= -10) exitReason = "stop loss hit";
@@ -131,8 +127,8 @@ export function rsiReversalStrategy(
         const spotProfitAmount = (shortPositionSize * pnl) / 100;
 
         trades.push({
-          entryIndex: shortEntryIndex, // Ensure this is set correctly
-          exitIndex: i, // This is the current index when exit occurs
+          entryIndex: shortEntryIndex,
+          exitIndex: i,
           entryPrice: shortEntryPrice,
           exitPrice: price,
           profitPercent: leveragedPnl,
@@ -147,11 +143,8 @@ export function rsiReversalStrategy(
           spotProfitAmount,
         });
 
-        accountValue += profitAmount;
-        spotAccountValue += spotProfitAmount;
-
-        accountValue = Math.max(accountValue, 0);
-        spotAccountValue = Math.max(spotAccountValue, 0);
+        accountValue = Math.max(accountValue + profitAmount, 0);
+        spotAccountValue = Math.max(spotAccountValue + spotProfitAmount, 0);
 
         shortEntryIndex = null;
         cooldown = 5;
