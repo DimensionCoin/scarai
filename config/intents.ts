@@ -14,6 +14,7 @@ export const VALID_INTENTS = [
   "moonshot_allocation",
   "trending",
   "compare",
+  "followup_explanation",
   "unknown",
 ] as const;
 

@@ -7,7 +7,7 @@ import {
   fetchCoinPriceHistory,
   fetchBestTrade,
   fetchCategoryCoins,
-  fetchMoonshotCandidates
+  fetchMoonshotCandidates,
 } from "@/lib/coinGecko";
 import {
   coinData,
@@ -23,10 +23,12 @@ import {
   investmentAdvice,
   bestTradeToday,
   categoryCoins,
-  moonshotAllocation
+  moonshotAllocation,
+  followupExplanation,
 } from "@/lib/intentPrompts";
 import { matchCategory } from "@/lib/matchers/matchCategory";
 import { ChatMessage } from "@/types/chat";
+import { runBotStrategies } from "@/lib/backtest/botStrategies/runBotStrategies";
 
 export async function getIntentData(
   parsed: ParsedQuery,
@@ -106,22 +108,29 @@ export async function getIntentData(
         fetchTrendingCoins(),
       ]);
 
+      // ✅ Run the strategy bots based on the formatted history string
+      const strategySignalSummary = runBotStrategies(history);
+
       const formatted = `
-            ${coinDataText}
+${coinDataText}
 
-            ---
+---
 
-            ${history}
+${history}
 
-            ---
+---
 
-            ${market}
+${strategySignalSummary}
 
-            ---
+---
 
-            ### Trending Coins
-            ${trending}
-`;
+${market}
+
+---
+
+### Trending Coins
+${trending}
+`.trim();
 
       return {
         systemPrompt: tradingAdvice,
@@ -228,6 +237,34 @@ export async function getIntentData(
 
     case "explain_concept": {
       return { systemPrompt: explainConcept, data: context };
+    }
+    case "followup_explanation": {
+      const lastScarMessage = chatHistory
+        .slice()
+        .reverse()
+        .find((m) => m.role === "assistant")?.content;
+
+      if (!lastScarMessage) {
+        return {
+          systemPrompt: followupExplanation,
+          data: "No previous assistant message found to analyze.",
+        };
+      }
+
+      const formatted = `
+        ### Previous Assistant Message
+        ${lastScarMessage}
+
+        ---
+
+        ### User Follow-Up
+        ${context}
+      `.trim();
+
+      return {
+        systemPrompt: followupExplanation,
+        data: formatted,
+      };
     }
 
     default: {

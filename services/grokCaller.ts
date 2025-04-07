@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { coreSystemRules } from "@/lib/grok/coreSystemRules";
 
 const client = new OpenAI({
   apiKey: process.env.GROK_API_KEY!,
@@ -13,6 +14,10 @@ interface GrokInput {
 
 export async function callGrok({ systemPrompt, context, data }: GrokInput) {
   const fullPrompt = `
+  ${coreSystemRules}
+
+---
+
 ${systemPrompt}
 
 ---
@@ -32,7 +37,7 @@ ${data}
       { role: "system", content: fullPrompt },
       { role: "user", content: context },
     ],
-    temperature: 0.7,
+    temperature: 0.2,
     max_tokens: 1000,
   });
 
