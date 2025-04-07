@@ -94,6 +94,10 @@ Example 15:
 User: "explain why you're bullish there"
 → intent: "followup_explanation"
 
+Example 16:
+User: "How has Solana performed in the last 90 days?"
+→ intent: "technical_analysis"
+
 
 
 Input Message:
